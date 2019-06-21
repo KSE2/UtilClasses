@@ -1,0 +1,12 @@
+/.project
+/.classpath
+/.settings
+*.*~
+*.bak
+
+/classes
+/bin
+/build
+/test
+/work
+
