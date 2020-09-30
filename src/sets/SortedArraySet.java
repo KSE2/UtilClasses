@@ -1,13 +1,14 @@
 package sets;
 
+import java.util.AbstractSet;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.Iterator;
 import java.util.NoSuchElementException;
 import java.util.Objects;
+import java.util.Set;
 import java.util.SortedSet;
-import java.util.TreeSet;
 
 /**
  * SortedArraySet is an extension of {@code ArraySet} implementing the
@@ -53,9 +54,6 @@ public class SortedArraySet<E> extends ArraySet<E>  implements SortedSet<E> {
 
 		} else {
 			// transfer each single element (different set structure)
-			if (c.comparator() != null) 
-				throw new IllegalArgumentException("cannot comply with argument comparator");
-			
 			ensureCapacity(c.size());
 			int i = 0;
 			for (E e : c) {
@@ -91,9 +89,6 @@ public class SortedArraySet<E> extends ArraySet<E>  implements SortedSet<E> {
 		if (comparator != null && size > 0) {
 			Arrays.sort((E[])elementData, 0, size, comparator);
 		}
-		
-//		E ob1 = null , ob2 = null;
-//		comparator.compare(ob1, ob2);
 	}
 
 	@Override
@@ -101,6 +96,16 @@ public class SortedArraySet<E> extends ArraySet<E>  implements SortedSet<E> {
 		return comparator;
 	}
 	
+//    @SuppressWarnings("unchecked")
+//    @Override
+//	public SortedArraySet<E> clone () {
+//   	   return (SortedArraySet<E>) super.clone();
+//	}
+//
+//    protected SortedArraySet<E> emptyClone () {
+//   	   return (SortedArraySet<E>) super.clone();
+// 	}
+    
 	/** Returns the index position (>= 0) of the given object in the element 
 	 * array. Returns a negative value (-insertPosition -1) if the object is not
 	 * present in the array. This indicates the insert position.
@@ -181,35 +186,21 @@ public class SortedArraySet<E> extends ArraySet<E>  implements SortedSet<E> {
 	
 	@Override
 	public SortedSet<E> subSet (E fromElement, E toElement) {
-		// TODO Auto-generated method stub
-		if (toElement == null )
-			throw new NullPointerException("toElement is null");
-		if (fromElement == null )
-			throw new NullPointerException("fromElement is null");
-
-		return new SubSortedArraySet<>(this, fromElement, toElement);
-//		throw new UnsupportedOperationException();
+		Objects.requireNonNull(toElement, "toElement is null");
+		Objects.requireNonNull(fromElement, "fromElement is null");
+		return new SubSortedSet(this, fromElement, toElement);
 	}
 
 	@Override
 	public SortedSet<E> headSet (E toElement) {
-		// TODO Auto-generated method stub
-		if (toElement == null )
-			throw new NullPointerException();
-
-		return new SubSortedArraySet<>(this, null, toElement);
-//		throw new UnsupportedOperationException();
+		Objects.requireNonNull(toElement);
+		return new SubSortedSet(this, null, toElement);
 	}
 
 	@Override
 	public SortedSet<E> tailSet (E fromElement) {
-		// TODO Auto-generated method stub
-		// control parameter base values
-		if (fromElement == null )
-			throw new NullPointerException();
-
-		return new SubSortedArraySet<>(this, fromElement, null);
-//		throw new UnsupportedOperationException();
+		Objects.requireNonNull(fromElement);
+		return new SubSortedSet(this, fromElement, null);
 	}
 
 	@SuppressWarnings("unchecked")
@@ -224,23 +215,57 @@ public class SortedArraySet<E> extends ArraySet<E>  implements SortedSet<E> {
 		return size == 0 ? null : (E) elementData[size-1];
 	}
 	
+	/** Returns the element at the given index position in the sorted 
+	 * sequence.  
+	 * 
+	 * @param index int index position counting from 0
+	 * @return E
+	 * @throws IndexOutOfBoundsException
+	 */
+	public E getElement (int index) {
+		if (index < 0 | index >= size()) 
+			throw new IndexOutOfBoundsException();
+		
+		Iterator<E> it = iterator();
+		E e = null;
+		for (int i = 0; i <= index; i++) {
+			e = it.next();
+		}
+		return e;
+	}
+	
+	/** Returns the index position of the given element object in this SortedSet
+	 * or -1 if this object is not contained.
+	 *  
+	 * @param o Object
+	 * @return int index position or -1
+	 */
+	public int indexOf (Object o) {
+		int ct = 0;
+		for (Iterator<E> it = iterator(); it.hasNext(); ct++) {
+			if (it.next().equals(o)) {
+				return ct;
+			}
+		}
+		return -1;
+	}
+	
 // ----------------------------------------------------------
 	
-	private static class SubSortedArraySet<E> extends SortedArraySet<E> {
-		private ArraySet<E> parentSet;
+	private class SubSortedSet extends AbstractSet<E> implements OperatingSet<E>, SortedSet<E> {
+		private SortedSet<E> parentSet;
 		private E lowBound, highBound;
 
-		public SubSortedArraySet (SortedArraySet<E> set, E lowBound, E highBound) {
+		public SubSortedSet (SortedSet<E> set, E lowBound, E highBound) {
 			super();
 			
 			// take over from set (i.e.redirect element data)
 			setComparator(set.comparator());
-			elementData = set.elementData;
 			parentSet = set;
 			this.lowBound = lowBound;
 			this.highBound = highBound;
 
-			// if both bound values are defined
+			// if both bound values are defined, check for consistency
 			if (lowBound != null && highBound != null) {
 				// compare low and high bound
 				Comparator<? super E> comparator = comparator();
@@ -275,14 +300,14 @@ public class SortedArraySet<E> extends ArraySet<E>  implements SortedSet<E> {
 			if (highBound != null) {
 				int c = comparator == null ? ((Comparable<E>)v).compareTo(highBound)
 						: comparator.compare(v, highBound);
-				if (c > 0) return false;
+				if (c >= 0) return false;
 			}
 			return true;
 		}
 		
 		@Override
 		public boolean contains (Object o) {
-			return isInbounds((E) o) && super.contains(o);
+			return isInbounds((E) o) && parentSet.contains(o);
 		}
 
 		@Override
@@ -291,67 +316,39 @@ public class SortedArraySet<E> extends ArraySet<E>  implements SortedSet<E> {
 			if (!isInbounds(e)) 
 				throw new IllegalArgumentException("value out of range: " + e);
 			
-			boolean ok = super.add(e);
-			if (ok) {
-				if (elementData != parentSet.elementData) {
-					parentSet.elementData = elementData;
-				}
-				parentSet.modCount++;
-				parentSet.size++;
-			}
+			boolean ok = parentSet.add(e);
 			return ok;
 		}
 
 		@Override
 		public boolean remove (Object o) {
+			Objects.requireNonNull(o);
 			if (!isInbounds((E) o)) return false;
 			
-			boolean ok = super.remove(o);
-			if (ok) {
-				if (elementData != parentSet.elementData) {
-					parentSet.elementData = elementData;
-				}
-				parentSet.modCount++;
-				parentSet.size--;
-			}
+			boolean ok = parentSet.remove(o);
 			return ok;
 		}
 
 		@Override
-		public void clear() {
-			for (E e : this) {
-				remove(e);
-			}
-		}
-
-		@Override
-		public Object clone() {
-			@SuppressWarnings("unchecked")
-			SubSortedArraySet<E> s = (SubSortedArraySet<E>) super.clone();
-			s.elementData = s.parentSet.elementData;
-			return s;
-		}
-
-		@Override
 		public Iterator<E> iterator() {
-			return new BoundsIterator(super.iterator());
+			return new BoundsIterator((BackstepIterator<E>) parentSet.iterator());
 		}
 
 		@Override
 		public int size() {
 			int count = 0;
-			for (E e : this) {
+			for (@SuppressWarnings("unused") E e : this) {
 				count++;
 			}
 			return count;
 		}
 
 		private class BoundsIterator implements Iterator<E> {
-			private Iterator<E> parent;
+			private BackstepIterator<E> parent;
 			private E next;
 			private E current;
 
-			BoundsIterator (Iterator<E> parent) {
+			BoundsIterator (BackstepIterator<E> parent) {
 				this.parent = parent;
 				getNext();
 			}
@@ -387,11 +384,131 @@ public class SortedArraySet<E> extends ArraySet<E>  implements SortedSet<E> {
 					throw new IllegalStateException();
 
 				int ct = modCount;
-				SubSortedArraySet.this.remove(current);
+				SubSortedSet.this.remove(current);
+				parent.backstep();
 				current = null;
 				modCount = ct;
 			}
 		}
 
+		@Override
+		public boolean isEmpty() {
+			return !iterator().hasNext();
+		}
+
+		@Override
+		public Comparator<? super E> comparator() {
+			return parentSet.comparator();
+		}
+
+		@Override
+		public SortedSet<E> subSet(E fromElement, E toElement) {
+			if (!isInbounds(toElement) || !isInbounds(fromElement))
+				throw new IllegalArgumentException("value out of range");
+			return new SubSortedSet(this, fromElement, toElement);
+		}
+
+		@Override
+		public SortedSet<E> headSet(E toElement) {
+			if (!isInbounds(toElement))
+				throw new IllegalArgumentException("value out of range");
+			return new SubSortedSet(this, null, toElement);
+		}
+
+		@Override
+		public SortedSet<E> tailSet(E fromElement) {
+			if (!isInbounds(fromElement))
+				throw new IllegalArgumentException("value out of range");
+			return new SubSortedSet(this, fromElement, null);
+		}
+
+		@Override
+		public E first() {
+			Iterator<E> it = iterator();
+			return it.hasNext() ? it.next(): null;
+		}
+
+		@Override
+		public E last() {
+			E element = null;
+			Iterator<E> it = iterator();
+			while (it.hasNext()) {
+				element = it.next();
+			}
+			return element;
+		}
+
+		@Override
+		public OperatingSet<E> intersected(Set<E> a) {
+			SortedArraySet<E> set = (SortedArraySet<E>) emptyClone();
+			for (E elem : this) {
+				if (a.contains(elem)) {
+					set.add(elem);
+				}
+			}
+			return set;
+		}
+
+		@Override
+		public OperatingSet<E> united(Set<E> a) {
+			SortedArraySet<E> set = new SortedArraySet<>(this);
+			for (E elem : a) {
+				set.add(elem);
+			}
+			return set;
+		}
+
+		@Override
+		public OperatingSet<E> without(Set<E> a) {
+			SortedArraySet<E> set = new SortedArraySet<>(this);
+			for (E elem : a) {
+				if (this.contains(elem)) {
+					set.remove(elem);
+				}
+			}
+			return set;
+		}
+
+		@Override
+		public OperatingSet<E> xored(Set<E> a) {
+			SortedArraySet<E> set = (SortedArraySet<E>) without(a);
+			for (E elem : a) {
+				if (!this.contains(elem)) {
+					set.add(elem);
+				}
+			}
+			return set;
+		}
+
+		@Override
+		public void intersectWith (Set<E> a) {
+			retainAll(a);
+		}
+
+		@Override
+		public void uniteWith (Set<E> a) {
+			checkAllInbound(a);
+			addAll(a);
+		}
+
+		private void checkAllInbound (Iterable<E> a) {
+			for (Iterator<E> it = a.iterator(); it.hasNext();) {
+				if (!isInbounds(it.next())) {
+					throw new IllegalArgumentException("parameter contains illegal elements");
+				}
+			}
+		}
+
+		@Override
+		public void exclude (Set<E> a) {
+			removeAll(a);
+		}
+
+		@Override
+		public void xorWith (Set<E> a) {
+			Set<E> intersection = intersected(a);
+			uniteWith(a);
+			exclude(intersection);
+		}
 	}
 }

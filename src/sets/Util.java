@@ -2,10 +2,13 @@ package sets;
 
 import java.util.Comparator;
 import java.util.Iterator;
+import java.util.Objects;
 import java.util.Random;
 import java.util.Set;
 
-public class Util {
+import javax.management.modelmbean.RequiredModelMBean;
+
+class Util {
 
 	private static Random random = new Random();
 
@@ -60,5 +63,65 @@ public class Util {
 		return buf.toString();
 	}
 
+	/** Returns a random String value which sorts below the given value "a".
+	 * 
+	 * @param a String reference value
+	 * @param maxLength int maximum length of the return value
+	 * @return String random value (length 0..maxLength)
+	 */
+	public static String getRandomValueBelow (String a, int maxLength) {
+		String v;
+		do {
+			v = randomString(maxLength);
+		} while (v.compareTo(a) >= 0);
+		return v;
+	}
+	
+	/** Returns a random String value which sorts above the given value "a".
+	 * 
+	 * @param a String reference value
+	 * @param maxLength int maximum length of the return value
+	 * @return String random value (length 0..maxLength)
+	 */
+	public static String getRandomValueAbove (String a, int maxLength) {
+		String v;
+		do {
+			v = randomString(maxLength);
+		} while (v.compareTo(a) <= 0);
+		return v;
+	}
+	
+	public static void requirePositive (int i) {
+		if (i < 0)
+			throw new IllegalArgumentException("argument is negative");
+	}
+	
+	public static void requirePositive (int i, String argument) {
+		if (i < 0) {
+			String arg = argument == null ? "argument" : argument;
+			throw new IllegalArgumentException(arg.concat(" is negative"));
+		}
+	}
+
+	/** Returns the value from the given iterator at index position.
+	 * 
+	 * @param it {@code Iterator<T>}
+	 * @param index int counting from 0
+	 * @return T or null if iterator has no value
+	 * @throws IllegalArgumentException if index is negative
+	 */
+	public static <T> T getIterValue (Iterator<T> it, int index) {
+		requirePositive(index, "index");
+		if (!it.hasNext()) {
+			return null;
+		}
+		
+		for (int i = 0; i < index; i++) {
+			it.next();
+		}
+		return it.next();
+	}
+
 
 }
+

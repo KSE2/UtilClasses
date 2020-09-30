@@ -206,6 +206,10 @@ public class ArraySet<E> extends AbstractSet<E> implements OperatingSet<E>,
 	  }
    }
 
+   /** Returns a shallow clone of this ArraySet.
+    * 
+    * @return Object 
+    */
    @SuppressWarnings("unchecked")
    @Override
    public Object clone() {
@@ -265,12 +269,7 @@ public class ArraySet<E> extends AbstractSet<E> implements OperatingSet<E>,
 	
 	@Override
 	public OperatingSet<E> xored (Set<E> a) {
-		ArraySet<E> set = emptyClone();
-		for (E elem : this) {
-			if (!a.contains(elem)) {
-				set.add(elem);
-			}
-		}
+		ArraySet<E> set = (ArraySet<E>) without(a);
 		for (E elem : a) {
 			if (!this.contains(elem)) {
 				set.add(elem);
@@ -306,7 +305,7 @@ public class ArraySet<E> extends AbstractSet<E> implements OperatingSet<E>,
     /**
      * Iterator to traverse defined element data of this ArraySet.
      */
-    private class ASIterator implements Iterator<E> {
+    protected class ASIterator implements BackstepIterator<E> {
         int cursor;       // index of next element to return
         int lastRet = -1; // index of last element returned; -1 if no such
         int expectedModCount = modCount;
@@ -353,6 +352,15 @@ public class ArraySet<E> extends AbstractSet<E> implements OperatingSet<E>,
             if (modCount != expectedModCount)
                 throw new ConcurrentModificationException();
         }
+
+		@Override
+		public boolean backstep() {
+			if (cursor > 0 | lastRet < 0) {
+				cursor--;
+				lastRet = -1;
+			}
+			return false;
+		}
     }
 
 }
