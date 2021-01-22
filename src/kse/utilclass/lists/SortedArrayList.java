@@ -1,4 +1,4 @@
-package lists;
+package kse.utilclass.lists;
 
 import java.util.ArrayList;
 import java.util.Collection;

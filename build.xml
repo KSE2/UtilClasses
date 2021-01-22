@@ -1,0 +1,138 @@
+<project name="UtilClasses" basedir="." default="help">
+
+<!--   NAMES                                           -->
+	<property name="doc-project-name" value="KSE UtilClasses" />
+	<property name="ver" value="0-1-0" />
+	<property name="year" value="2021" />
+	<property name="release date" value="17.01.2021" />
+	<property name="encoding" value="UTF-8" />
+	<property name="pkg-basename" value="kse.utilclass" />
+	<property name="pkg-fbasename" value="kse/utilclass" />
+	<property name="dist-foldername" value="UtilClasses" />
+	<property name="program-basename" value="util-classes" />
+	
+<!--   DIRECTORIES                                                    -->
+<!--   you may have to adapt these settings to your current installation  -->
+
+	<property name="src" value="${basedir}/src" />
+	<property name="doc" value="${basedir}/doc" />
+	<property name="dist" value="${basedir}/bin" />
+	<property name="resource" value="${basedir}/resource" />
+	<property name="res" value="${basedir}/resource" />
+	<property name="apidoc" value="${basedir}/doc/api" />
+	<property name="build" value="${basedir}/build" />
+	<property name="lib" value="${basedir}/lib" />
+	<property name="exlib" value="../../Develop/Library" />
+
+<!--   FILES                                                          -->
+<!--   you may have to adapt these settings to your current installation  -->
+
+   	<property name="junit" value="${exlib}/junit-4.jar"/>
+   	<property name="keystore" value="../kseKeystore"/>
+
+
+<!--   TEXT AND LISTS                                                 -->
+
+   <property name="docfileset" value="License.txt Readme.txt Changelog.txt" />
+   <property name="rootfileset" value="build.xml MANIFEST.MF .classpath .project" />
+   <property name="externclasspath" value="${junit}" />
+
+
+<target name="init">
+    <!-- Create the time stamp -->
+    <tstamp/>
+    <mkdir dir="${dist}"/>
+    <mkdir dir="${build}"/>
+</target>
+
+<target name="api" depends="init" description="create Javadoc API for application">
+<javadoc packagenames="${pkg-basename}.*"
+           sourcepath="${src}" 
+	   encoding="${encoding}" 
+           excludepackagenames="**.Test*" 
+           defaultexcludes="yes"
+           destdir="${apidoc}"
+           classpath="${externclasspath}"
+           author="true"
+           version="true"
+           windowtitle="${doc-project-name} ${ver} API Documentation">
+<bottom><![CDATA[<i>${doc-project-name} ${ver}, Copyright &#169; ${year}
+Wolfgang Keller (KSE). All Rights Reserved. Contact service@neolith.chiron.uberspace.de</i>]]></bottom>
+<Header><![CDATA[<b>${doc-project-name} ${ver}</b>]]></Header>
+<Doctitle><![CDATA[${doc-project-name} ${ver} API Documentation
+          <br>Release Date: ${release date}</p>]]></Doctitle>
+</javadoc>
+</target>
+
+
+<target name="jar" depends="comp" description="create binary package">
+<!-- remove previous outputs except standard executable -->
+<property name="programname" value="${dist}/${program-basename}-${ver}" />
+<delete file="${programname}.jar"/>
+
+<!-- create the executable (versioned name) -->
+<jar destfile="${programname}.jar" manifest="MANIFEST.MF" update="false">
+   <fileset dir="${build}" includes="${pkg-fbasename}/**" excludes="**/Test*"/>
+<!--   <zipfileset dir="${resource}" prefix="${pkg-fbasename}/resource" /> -->
+</jar>
+
+<!-- make a copy to standard executable name -->
+<!-- <copy file="${programname}.jar" tofile="${dist}/${program-basename}.jar" overwrite="yes"/> -->
+</target>
+
+
+<target name="signjar" >
+<!--<target name="signjar" if="P0" >-->
+<copy file="${sfile}" tofile="${ufile}" overwrite="yes"/>
+<input message="Password for Keystore: " addproperty="spass" /> 
+<input message="Password for KSE: " addproperty="kpass" /> 
+<signjar jar="${sfile}" alias="kse"  storepass="${spass}" keypass="${kpass}"
+   keystore="${keystore}" />
+<!-- <signjar jar="${sfile}" alias="kse" storepass="${P0}" keypass="${P1}"
+   keystore="${keystore}" /> -->
+</target>
+
+
+<target name="clear-c" description="remove class files from build area">
+<delete>
+   <fileset dir="${build}" includes="**/*.class"/>
+</delete>
+</target>
+
+<target name="comp" depends="init,clear-c" description="compile packages">
+   <javac srcdir="${src}"  destdir="${build}" includeantruntime="false"
+       source="1.8" target="1.8" 
+       classpath="${externclasspath}" encoding="${encoding}" />
+</target>
+
+<target name="dist" depends="comp,api,jar" description="create distribution package">
+<property name="filename" value="${dist}/${program-basename}-devel-${ver}.zip" />
+
+<zip destfile="${filename}">
+    <zipfileset dir="${basedir}" includes="${rootfileset}" prefix="${dist-foldername}" />
+    <zipfileset dir="${doc}" includes="${docfileset}" prefix="${dist-foldername}/doc" />
+    <zipfileset dir="${apidoc}" prefix="${dist-foldername}/doc/api"/>
+<!--    <zipfileset dir="${resource}" prefix="${dist-foldername}/resource"/> -->
+    <zipfileset dir="${src}/${pkg-fbasename}" prefix="${dist-foldername}/src/${pkg-fbasename}"/>
+
+<!--    <zipfileset file="${backlib}" prefix="jpws/lib"/>
+    <zipfileset file="${backlib-ftp}" prefix="jpws/lib"/>
+    <zipfileset file="${backlib}.sig" prefix="jpws/lib"/>
+    <zipfileset file="${backlib-ftp}.sig" prefix="jpws/lib"/>
+    <zipfileset file="${junit}" prefix="jpws/lib"/>
+-->
+  </zip>
+<checksum file="${filename}"/>
+</target>
+
+
+<target name="help">
+	<echo>Targets:
+--------
+jar          - create executable jar
+api          - create Javadoc API 
+dist         - create distribution package (incl. sources)
+clear-c      - remove class files from build area
+	</echo>
+</target>
+</project>

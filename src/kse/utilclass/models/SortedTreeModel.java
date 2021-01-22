@@ -1,4 +1,4 @@
-package models;
+package kse.utilclass.models;
 
 import java.awt.Dimension;
 import java.util.ArrayList;
@@ -14,7 +14,7 @@ import javax.swing.event.TreeModelListener;
 import javax.swing.tree.TreeModel;
 import javax.swing.tree.TreePath;
 
-import sets.SortedArraySet;
+import kse.utilclass.sets.SortedArraySet;
 
 public class SortedTreeModel implements TreeModel {
 
