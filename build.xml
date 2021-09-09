@@ -2,9 +2,9 @@
 
 <!--   NAMES                                           -->
 	<property name="doc-project-name" value="KSE UtilClasses" />
-	<property name="ver" value="0-2-0" />
+	<property name="ver" value="0-3-0" />
 	<property name="year" value="2021" />
-	<property name="release date" value="03.08.2021" />
+	<property name="release date" value="09.09.2021" />
 	<property name="encoding" value="UTF-8" />
 	<property name="pkg-basename" value="kse.utilclass" />
 	<property name="pkg-fbasename" value="kse/utilclass" />
@@ -106,9 +106,10 @@ Wolfgang Keller (KSE). All Rights Reserved. Contact service@neolith.chiron.ubers
 </target>
 
 <target name="dist" depends="comp,api,jar" description="create distribution package">
-<property name="filename" value="${dist}/${program-basename}-devel-${ver}.zip" />
+<property name="filename1" value="${dist}/${program-basename}-devel-${ver}.zip" />
+<property name="filename2" value="${dist}/${program-basename}-src-${ver}.zip" />
 
-<zip destfile="${filename}">
+<zip destfile="${filename1}">
     <zipfileset dir="${basedir}" includes="${rootfileset}" prefix="${dist-foldername}" />
     <zipfileset dir="${doc}" includes="${docfileset}" prefix="${dist-foldername}/doc" />
     <zipfileset dir="${apidoc}" prefix="${dist-foldername}/doc/api"/>
@@ -121,8 +122,14 @@ Wolfgang Keller (KSE). All Rights Reserved. Contact service@neolith.chiron.ubers
     <zipfileset file="${backlib-ftp}.sig" prefix="jpws/lib"/>
     <zipfileset file="${junit}" prefix="jpws/lib"/>
 -->
-  </zip>
-<checksum file="${filename}"/>
+</zip>
+
+<zip destfile="${filename2}">
+    <zipfileset dir="${src}/${pkg-fbasename}" prefix="${dist-foldername}/src/${pkg-fbasename}"/>
+</zip>
+
+<checksum file="${filename1}"/>
+<checksum file="${filename2}"/>
 </target>
 
 

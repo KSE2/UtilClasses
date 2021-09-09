@@ -2,13 +2,14 @@ package kse.utilclass.misc;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.util.Comparator;
 import java.util.Iterator;
 import java.util.Objects;
 import java.util.Random;
 import java.util.Set;
-
-import javax.management.modelmbean.RequiredModelMBean;
+import java.util.zip.CRC32;
 
 public class Util {
 
@@ -308,6 +309,316 @@ public class Util {
 	      return sb.toString();
 	   }
 
+	/** Returns a SHA-256 fingerprint value of the parameter byte buffer.
+	 * 
+	 * @param buffer data to digest
+	 * @return SHA256 digest
+	 */
+	public static byte[] fingerPrint ( byte[] buffer ) {
+	   Objects.requireNonNull(buffer, "buffer is null");
+	   SHA256 sha = new SHA256();
+	   sha.update( buffer );
+	   return sha.digest();
+	}
+
+	/**
+	 * Writes a 32-bit integer value to a byte array as
+	 * 4 sequential bytes in a Big-Endian manner 
+	 * (most significant stored first).
+	 *  
+	 * @param v int, the value to be written
+	 * @param dest the destination byte array
+	 * @param offs the start offset in <code>dest</code>
+	 */
+	public static void writeInt ( int v, byte[] dest, int offs ) {
+	   dest[ offs ]     = (byte)(  (v >>> 24) );
+	   dest[ offs + 1 ] = (byte)(  (v >>> 16) );
+	   dest[ offs + 2 ] = (byte)(  (v >>>  8) );
+	   dest[ offs + 3 ] = (byte)(  v );
+	}
+
+	/**
+	 * Writes a 32-bit integer value to a byte array as
+	 * 4 sequential bytes in a Little-Endian manner 
+	 * (least significant stored first).
+	 *  
+	 * @param v int, the value to be written
+	 * @param dest the destination byte array
+	 * @param offs the start offset in <code>dest</code>
+	 */
+	public static void writeIntLittle ( int v, byte[] dest, int offs ) {
+	   dest[ offs ]     = (byte)(  v );
+	   dest[ offs + 1 ] = (byte)(  (v >>>  8) );
+	   dest[ offs + 2 ] = (byte)(  (v >>> 16) );
+	   dest[ offs + 3 ] = (byte)(  (v >>> 24) );
+	}
+
+	/**
+	 * Writes a long integer value to a byte array as 8 sequential bytes in a 
+	 * Big-Endian manner (Java-standard).
+	 *  
+	 * @param v long, the value to be written
+	 * @param dest the destination byte array
+	 * @param offs the start offset in <code>dest</code>
+	 */
+	public static void writeLong ( long v, byte[] dest, int offs ) {
+	   dest[ offs ]     = (byte)( (v >>> 56) );
+	   dest[ offs + 1 ] = (byte)( (v >>> 48) );
+	   dest[ offs + 2 ] = (byte)( (v >>> 40) );
+	   dest[ offs + 3 ] = (byte)( (v >>> 32) );
+	   dest[ offs + 4 ] = (byte)( (v >>> 24) );
+	   dest[ offs + 5 ] = (byte)( (v >>> 16) );
+	   dest[ offs + 6 ] = (byte)( (v >>>  8) );
+	   dest[ offs + 7 ] = (byte)( (v >>>  0) );
+	}
+
+	/**
+	 * Writes a 64-bit integer value to a byte array as 
+	 * 8 sequential bytes in a Little-Endian manner 
+	 * (least significant stored first).
+	 *  
+	 * @param v long, the value to be written
+	 * @param dest the destination byte array
+	 * @param offs the start offset in <code>dest</code>
+	 */
+	public static void writeLongLittle ( long v, byte[] dest, int offs ) {
+	   dest[ offs ]     = (byte)(  v );
+	   dest[ offs + 1 ] = (byte)(  (v >>>  8) );
+	   dest[ offs + 2 ] = (byte)(  (v >>> 16) );
+	   dest[ offs + 3 ] = (byte)(  (v >>> 24) );
+	   dest[ offs + 4 ] = (byte)(  (v >>> 32) );
+	   dest[ offs + 5 ] = (byte)(  (v >>> 40) );
+	   dest[ offs + 6 ] = (byte)(  (v >>> 48) );
+	   dest[ offs + 7 ] = (byte)(  (v >>> 56) );
+	}
+
+	/**
+	 * Returns a byte array of same length as the input buffers where the
+	 * result has XORed each ordinal position in both arrays (a XOR b).
+	 *  
+	 * @param a input byte array (same length as b)
+	 * @param b input byte array (same length as a)
+	 * @return XOR-ed a and b
+	 * @throws IllegalArgumentException if a and b have differing length
+	 */
+	public static final byte[] XOR_buffers ( byte[] a, byte[] b ) {
+	   if ( a.length != b.length )
+	      throw new IllegalArgumentException( "buffer a,b length must be equal" );
+	   
+	   int len = a.length;
+	   byte[] res = new byte[ len ];
+	   for ( int i = 0; i < len; i++ ) {
+	      res[i] = (byte) (a[i] ^ b[i]);
+	   }
+	   return res;
+	}
+
+	/**
+	 * Modifies parameter a with (a XOR b).
+	 *  
+	 * @param a input byte array (same length as b)
+	 * @param b input byte array (same length as a)
+	 * @throws IllegalArgumentException if a and b have differing length
+	 */
+	public static final void XOR_buffers2 ( byte[] a, byte[] b ) {
+	   if ( a.length != b.length )
+	      throw new IllegalArgumentException( "buffer a,b length must be equal" );
+	   
+	   int len = a.length;
+	   for ( int i = 0; i < len; i++ ) 
+	      a[i] = (byte) (a[i] ^ b[i]);
+	}
+
+	/**
+	 * Reads a 4-byte integer value from a byte array as 4 sequential bytes in a 
+	 * Big-Endian manner (Java-standard).
+	 *  
+	 * @param b the source byte array
+	 * @param offs the start offset in <code>dest</code>
+	 * @return int integer as read from the byte sequence
+	 */
+	public static int readInt ( byte[] b, int offs )
+	{
+	   return
+	   (((int)b[ offs + 0 ] & 0xff) <<  24) |
+	   (((int)b[ offs + 1 ] & 0xff) <<  16) |
+	   (((int)b[ offs + 2 ] & 0xff) <<   8) |
+	   (((int)b[ offs + 3 ] & 0xff) <<   0);
+	}
+
+	/**
+	 * Reads a integer value from a byte array as 4 sequential bytes in a 
+	 * Little-Endian manner (least significant stored first).
+	 *  
+	 * @param b the source byte array
+	 * @param offs the start offset in <code>dest</code>
+	 * @return int integer as read from the byte sequence
+	 */
+	public static int readIntLittle ( byte[] b, int offs )
+	{
+	   return
+	   ((int)b[ offs ] & 0xff) | 
+	   (((int)b[ offs + 1 ] & 0xff) <<  8) |
+	   (((int)b[ offs + 2 ] & 0xff) <<  16) |
+	   (((int)b[ offs + 3 ] & 0xff) <<  24);
+	}
+
+	/**
+	 * Reads a long integer value from a byte array as 8 sequential bytes in a 
+	 * Big-Endian manner (Java-standard).
+	 *  
+	 * @param b the source byte array
+	 * @param offs the start offset in <code>dest</code>
+	 * @return long integer as read from the byte sequence
+	 */
+	public static long readLong ( byte[] b, int offs )
+	{
+	   return
+	   (((long)b[ offs + 0 ] & 0xff) <<  56) |
+	   (((long)b[ offs + 1 ] & 0xff) <<  48) |
+	   (((long)b[ offs + 2 ] & 0xff) <<  40) |
+	   (((long)b[ offs + 3 ] & 0xff) <<  32) |
+	   (((long)b[ offs + 4 ] & 0xff) <<  24) |
+	   (((long)b[ offs + 5 ] & 0xff) <<  16) |
+	   (((long)b[ offs + 6 ] & 0xff) <<   8) |
+	   (((long)b[ offs + 7 ] & 0xff) <<   0);
+	}
+
+	/**
+	 * Reads a long (signed) integer value from a byte array as
+	 * 8 sequential bytes in a Little-Endian manner 
+	 * (least significant stored first).
+	 *  
+	 * @param b the source byte array
+	 * @param offs the start offset in <code>dest</code>
+	 * @return long integer as read from the byte sequence
+	 */
+	public static long readLongLittle ( byte[] b, int offs )
+	{
+	   return
+	   ((long)b[ offs ] & 0xff) | 
+	   (((long)b[ offs + 1 ] & 0xff) <<  8) |
+	   (((long)b[ offs + 2 ] & 0xff) <<  16) |
+	   (((long)b[ offs + 3 ] & 0xff) <<  24) |
+	   (((long)b[ offs + 4 ] & 0xff) <<  32) |
+	   (((long)b[ offs + 5 ] & 0xff) <<  40) |
+	   (((long)b[ offs + 6 ] & 0xff) <<  48) |
+	   (((long)b[ offs + 7 ] & 0xff) <<  56);
+	}
+
+	/**
+	 * Reads an unsigned 4-byte integer value from a byte array in a 
+	 * Little-Endian manner (least significant stored first). The
+	 * returned value is a long integer. 
+	 *  
+	 * @param b the source byte array
+	 * @param offs the start offset in <code>dest</code>
+	 * @return long unsigned 32-bit integer as read from the byte sequence
+	 */
+	public static long readUIntLittle ( byte[] b, int offs )
+	{
+	   return readIntLittle( b, offs ) & 0xFFFFFFFFL; 
+	}
+
+	/** Returns a copy of the parameter byte array of the same length. 
+	 * 
+	 * @param b data source
+	 * @return array copy
+	 */
+	public static byte[] arraycopy ( byte[] b )	{
+	   return arraycopy( b, 0, b.length );
+	}
+
+	/** Returns a copy of the parameter byte array of the given length. 
+	 *  The result will be identical, a shortage or a prolongation of the parameter 
+	 *  value, depending on the length setting.
+	 * 
+	 * @param b data source
+	 * @param length length in b
+	 * @return array segment within b from start offset 0
+	 */
+	public static byte[] arraycopy ( byte[] b, int length )	{
+	   return arraycopy( b, 0, length );
+	}
+
+	/** Returns a copy of the parameter byte array of the given length. 
+	 *  The result will be identical, a shortage or a prolongation of the parameter 
+	 *  value, depending on the length setting.
+	 * 
+	 * @param b data source
+	 * @param start offset in b
+	 * @param length length in b
+	 * @return array segment of b
+	 */
+	public static byte[] arraycopy ( byte[] b, int start, int length ) {
+	   byte[] copy = new byte[ length ];
+	   System.arraycopy( b, start, copy, 0, Math.min( length, b.length-start ));
+	   return copy;
+	}
+
+	/**
+	 * Transfers the contents of the input stream to the output stream
+	 * until the end of input stream is reached, using the given data buffer.
+	 * 
+	 * @param input the input stream (non-null)
+	 * @param output the output stream (non-null)
+	 * @param buffer transfer buffer
+	 * @throws java.io.IOException
+	 */
+	public static void transferData ( InputStream input, OutputStream output,
+	      byte[] buffer ) throws java.io.IOException {
+	   Objects.requireNonNull(buffer, "transfer buffer is null");
+	   int len;
+	
+	//   Log.log( 10, "(Util) data transfer start" ); 
+	   while ( (len = input.read( buffer )) > 0 ) {
+	      output.write( buffer, 0, len );
+	   }
+	//   Log.log( 10, "(Util) data transfer end" );
+	}
+
+	/**
+	 * Transfers the contents of the input stream to the output stream
+	 * until the end of input stream is reached.
+	 * 
+	 * @param input the input stream (non-null)
+	 * @param output the output stream (non-null)
+	 * @param bufferSize the size of the transfer buffer
+	 * @throws java.io.IOException
+	 */
+	public static void transferData ( InputStream input, OutputStream output,
+	      int bufferSize  ) throws java.io.IOException {
+	   byte[] buffer = new byte[ bufferSize ];
+	   transferData(input, output, buffer);
+	}
+
+	/**
+	 * Transfers the contents of the input stream to the output stream
+	 * until the end of input stream is reached. This function version returns 
+	 * a CRC32 value over the entire data stream transferred.
+	 * 
+	 * @param input the input stream (non-null)
+	 * @param output the output stream (if null, a valid CRC value is still created)
+	 * @param bufferSize the size of the transfer buffer
+	 * @return int CRC value of the data stream read
+	 * @throws java.io.IOException
+	 */
+	public static int transferData2 ( InputStream input, OutputStream output,
+	      int bufferSize  ) throws java.io.IOException {
+	   CRC32 crc = new CRC32();
+	   byte[] buffer = new byte[ bufferSize ];
+	   int len;
+	
+	//   Log.log( 10, "(Util) data transfer start" ); 
+	   while ( (len = input.read( buffer )) > 0 ) {
+	      if ( output != null ) {
+	         output.write( buffer, 0, len );
+	      }
+	      crc.update( buffer, 0, len );
+	   }
+	//   Log.log( 10, "(Util) data transfer end" );
+	   return (int)crc.getValue();
+	}  // transferData2
 
 }
 
