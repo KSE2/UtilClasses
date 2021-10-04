@@ -134,5 +134,7 @@ public class UnixColor {
 	public static final Color WhiteSmoke = new Color(0xF5F5F5);
 	public static final Color YellowGreen = new Color(0x9ACD32);
 	
-	
+//	public static forName (String colorName) {
+//		
+//	}
 }
