@@ -102,6 +102,21 @@ public class ArraySet<E> extends AbstractSet<E> implements OperatingSet<E>,
         }
     }
 
+    /** Creates a new set of the given type with initial content consisting of 
+     * the elements of the given array.
+     *  
+     * @param <T> type of elements
+     * @param arr array of elements T
+     * @return {@code ArraySet<T>}
+     */
+    public static <T> ArraySet<T> fromArray (T[] arr) {
+    	ArraySet<T> set = new ArraySet<>();
+    	if (arr != null) {
+    		for (T e : arr) set.add(e);
+    	}
+    	return set;
+    }
+    
     /** length of the current element array */
     int getCurrentCapacity () {
     	return elementData.length;

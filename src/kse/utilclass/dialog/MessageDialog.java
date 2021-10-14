@@ -43,11 +43,13 @@ import javax.swing.JPanel;
 import javax.swing.SwingConstants;
 import javax.swing.UIManager;
 
+import kse.utilclass.misc.UnixColor;
+
 
 public class MessageDialog extends GSDialog {
    public static enum MessageType { noIcon, info, question, warning, error }
-   private static final Color WARNING_COLOR = new Color( 0xff, 0x7f, 0x50 ); // netscape.coral
-   private static final Color ERROR_COLOR = new Color( 0xf0, 0x80, 0x80 ); // netscape.lightcoral
+   private static final Color WARNING_COLOR = UnixColor.Coral;
+   private static final Color ERROR_COLOR = UnixColor.LightCoral;
 
    private MessageContentPanel   dialogPanel;
    
@@ -74,8 +76,7 @@ public MessageDialog () throws HeadlessException {
  * @throws HeadlessException
 */ 
 public MessageDialog (Window owner, ButtonBarModus dlgType, boolean modal)
-      throws HeadlessException
-{
+      throws HeadlessException {
    this(owner, null, MessageType.info, dlgType, true);
 }
 
@@ -278,6 +279,54 @@ public static DialogTerminationType showMessage (
    return result[0];
 }
 
+/** Creates a message dialog of the given properties without showing it.
+ *  
+ * @param parent <code>Component</code> the component this message's 
+ *               display is related to; may be null
+ * @param title <code>String</code> dialog title; may be <b>null</b> or a code           
+ * @param text <code>Object</code> text to display (<code>Component</code> 
+ *             or <code>String</code>)
+ * @param msgType <code>MessageType</code> appearance quality            
+ * @param dlgType {@code ButtonBarModus} dialog type for button setup 
+ * @param modal boolean 
+ * @return
+ */
+public static MessageDialog createMessageDialog ( 
+		final Component parent, 
+        final String title, 
+        final Object text, 
+        final MessageType msgType,
+        final ButtonBarModus dlgType,
+        final boolean modal )
+{
+	final MessageDialog[] dlgA = new MessageDialog[1];
+	Window owner = parent == null ? GUIService.getMainFrame() 
+						: GUIService.getAncestorWindow(parent);
+	
+	Runnable run = new Runnable() {
+		@Override
+		public void run() {
+			MessageDialog dlg = new MessageDialog(owner, text, msgType, dlgType, modal);
+			boolean singleButton = dlgType == ButtonBarModus.OK | 
+				   dlgType == ButtonBarModus.BREAK |
+				   dlgType == ButtonBarModus.CONTINUE |
+				   dlgType == ButtonBarModus.SINGLE;
+			String defTitle = singleButton ? "Information" : "Please Confirm";
+			String hstr = title == null ? defTitle : title;
+			dlg.setTitle(hstr);
+			dlg.pack();
+			dlgA[0] = dlg; 
+		}
+	};
+
+	try {
+		GUIService.performOnEDT(run, true);
+	} catch (InvocationTargetException | InterruptedException e) {
+		e.printStackTrace();
+	}
+	return dlgA[0];
+}
+
 /** Runs "setVisible(true)" on the given dialog guaranteed on the EDT.
  * @param dialog JDialog
  */
@@ -345,7 +394,7 @@ public static class MessageContentPanel extends JPanel {
 
    private void init () {
       // body panel (base)
-      setBorder(BorderFactory.createEmptyBorder(12, 10, 5, 25));
+      setBorder(BorderFactory.createEmptyBorder(15, 10, 15, 25));
    
       // prepare TEXT label (CENTER of display)
       textPanel = new JPanel( new BorderLayout() ) ;

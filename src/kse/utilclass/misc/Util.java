@@ -1,15 +1,22 @@
 package kse.utilclass.misc;
 
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.io.OutputStream;
+import java.io.OutputStreamWriter;
 import java.io.RandomAccessFile;
+import java.io.Reader;
 import java.io.StreamCorruptedException;
 import java.io.UnsupportedEncodingException;
+import java.io.Writer;
 import java.nio.BufferUnderflowException;
 import java.nio.CharBuffer;
 import java.util.Comparator;
@@ -17,12 +24,15 @@ import java.util.Iterator;
 import java.util.Objects;
 import java.util.Random;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 import java.util.zip.CRC32;
 
 public class Util {
 
-	public static final long TM_DAY = 60 * 60 * 24 * 1000;
+	public static final long TM_DAY = 24 * 60 * 60 * 1000;
 	public static final long TM_HOUR = 60 * 60 * 1000;
+	public static final long TM_MINUTE = 60 * 1000;
+	public static final long TM_SECOND= 1000;
 	
 	private static Random random = new Random();
 
@@ -61,6 +71,20 @@ public class Util {
 		return ct;
 	}
 
+	/** Returns a copy of the given text where any double occurrence of ' '
+	 * is replaced by a single occurrence.
+	 * 
+	 * @param s String text
+	 * @return String condensed text (blank reduction)
+	 */
+	public static String condensedStr (String s) {
+		int i;
+		while ((i=s.indexOf("  ")) > -1) {
+			s = s.substring(0, i) + s.substring(i+1);
+		}
+		return s;
+	}
+	
 	/** Returns a String consisting of random character values (lower case)
 	 * and of random length ranging 0 <= len <= maxLength.
 	 * 
@@ -578,66 +602,40 @@ public class Util {
 	/**
 	 * Transfers the contents of the input stream to the output stream
 	 * until the end of input stream is reached, using the given data buffer.
+	 * Operation stops unfinished when interrupted state of the current thread
+	 * is detected. The interrupted state is not cleared by this method. 
 	 * 
 	 * @param input the input stream (non-null)
 	 * @param output the output stream (non-null)
 	 * @param buffer transfer buffer
 	 * @throws java.io.IOException
 	 */
-	public static void transferData ( InputStream input, OutputStream output,
-	      byte[] buffer ) throws java.io.IOException {
+	public static void transferData (InputStream input, OutputStream output,
+	      byte[] buffer) throws java.io.IOException {
 	   Objects.requireNonNull(buffer, "transfer buffer is null");
+	   Thread thread = Thread.currentThread();
 	   int len;
-	
-	//   Log.log( 10, "(Util) data transfer start" ); 
-	   while ( (len = input.read( buffer )) > 0 ) {
-	      output.write( buffer, 0, len );
+	   while ((len = input.read(buffer)) > 0  && !thread.isInterrupted()) {
+	      output.write(buffer, 0, len);
 	   }
-	//   Log.log( 10, "(Util) data transfer end" );
 	}
 
 	/**
 	 * Transfers the contents of the input stream to the output stream
-	 * until the end of input stream is reached.
+	 * until the end of input stream is reached. A buffer is created.
+	 * Operation stops unfinished when interrupted state of the current thread
+	 * is detected. The interrupted state is not cleared by this method. 
 	 * 
 	 * @param input the input stream (non-null)
 	 * @param output the output stream (non-null)
 	 * @param bufferSize the size of the transfer buffer
 	 * @throws java.io.IOException
 	 */
-	public static void transferData ( InputStream input, OutputStream output,
-	      int bufferSize  ) throws java.io.IOException {
-	   byte[] buffer = new byte[ bufferSize ];
+	public static void transferData (InputStream input, OutputStream output,
+	      int bufferSize) throws java.io.IOException {
+	   byte[] buffer = new byte[bufferSize];
 	   transferData(input, output, buffer);
 	}
-
-	/**
-	 * Transfers the contents of the input stream to the output stream
-	 * until the end of input stream is reached. This function version returns 
-	 * a CRC32 value over the entire data stream transferred.
-	 * 
-	 * @param input the input stream (non-null)
-	 * @param output the output stream (if null, a valid CRC value is still created)
-	 * @param bufferSize the size of the transfer buffer
-	 * @return int CRC value of the data stream read
-	 * @throws java.io.IOException
-	 */
-	public static int transferData2 ( InputStream input, OutputStream output,
-	      int bufferSize  ) throws java.io.IOException {
-	   CRC32 crc = new CRC32();
-	   byte[] buffer = new byte[ bufferSize ];
-	   int len;
-	
-	//   Log.log( 10, "(Util) data transfer start" ); 
-	   while ( (len = input.read( buffer )) > 0 ) {
-	      if ( output != null ) {
-	         output.write( buffer, 0, len );
-	      }
-	      crc.update( buffer, 0, len );
-	   }
-	//   Log.log( 10, "(Util) data transfer end" );
-	   return (int)crc.getValue();
-	}  // transferData2
 
 	/** Makes every attempt to remove all files in the given directory, 
 	 * optionally including sub-directories. Files set to 'read-only' are
@@ -715,21 +713,36 @@ public class Util {
 	   out.close();
 	}
 
-	/** Copies the contents of any disk file to a specified output file.  If the
-	    *  output file is a relative path, it is made absolute against the directory
-	    *  of the input file.  The output file will be overwritten if it exist.
-	    *  A CRC32 check is performed to compare source and copy after the copy process
-	    *  and if results negative a <code>StreamCorruptedException</code> is thrown.
-	    *  Function reports errors to <code>System.err</code>.
-	    *  @param input a source File object
-	    *  @param output a copy File object
-	    *  @param carryTime if true the "last modified" time is set to source value
-	    *  @throws java.io.IOException if the function could not be completed
-	    *  because of an IO or CRC check error
+	   /** A security file copy method. 
+	    * Copies the contents of any disk file to a specified output file.  If 
+	    * the output file is a relative path, it is made absolute against the 
+	    * directory of the input file.  The output file will be overwritten if
+	    * it exist. Function reports errors to <code>System.err</code>.
+	    * Operation stops unfinished when interrupted state of the current thread
+	    * is detected. The interrupted state is cleared and an 
+	    * InterruptedException thrown. 
+	    * <p>A CRC32 check is performed to compare source and copy after the 
+	    * transfer process and if results negative a 
+	    * {@code StreamCorruptedException} is thrown.
+	    * <p>What is more, an intermediate temporary file is created into which
+	    * the source is copied before it is renamed to the target. This ensures
+	    * only completed and tested data transfers will be shown by the target
+	    * file name. 
+	    *  
+	    * @param source File source File object
+	    * @param target File target File object
+	    * @param carryTime boolean if true the "last modified" time is set to 
+	    *        source value
+	    * @throws IOException if the function could not be completed
+	    *         because of an IO or CRC-check error or if the thread was 
+	    *         interrupted
+	    * @throws InterruptedException if the calling thread was interrupted 
+	    *         while copying was unfinished
 	    */
-	   public static void copyFile( File input, File output, boolean carryTime )
-	                                   throws java.io.IOException {
+	   public static void copyFile (File source, File target, boolean carryTime)
+                                   throws java.io.IOException, InterruptedException {
 	      File parent;
+	      File copy = null;
 	      FileInputStream in = null;
 	      FileOutputStream out = null;
 	      CRC32 crcSum;
@@ -737,109 +750,145 @@ public class Util {
 	      long time;
 	
 	      // control parameter
-	      if ( input == null || output == null )
-	         throw new IllegalArgumentException( "null pointer" );
-	      if ( input.equals( output ) )
-	         throw new IllegalArgumentException( "illegal self reference" );
+	      if ( source == null || target == null )
+	         throw new NullPointerException("an argument is null");
+	      if ( source.equals(target) ) return;
 	
 	      try {
 	         // make output file absolute (if not already)
-	         parent=input.getAbsoluteFile().getParentFile();
-	         if ( !output.isAbsolute() ) {
-	            output = new File( parent, output.getPath() );
+	         if ( !target.isAbsolute() ) {
+		        parent=source.getAbsoluteFile().getParentFile();
+	            target = new File(parent, target.getPath());
 	         }
 	
 	         // make sure the directory for the output file exists
-	         ensureFilePath( output, parent );
+	         parent=target.getAbsoluteFile().getParentFile();
+	         ensureFilePath(target, parent);
 	
-	         // create file streams
-	         out = new FileOutputStream(output);
-	         in = new FileInputStream(input);
-	         time = input.lastModified();
-	
+			 // create the download file (intermediate copy)
+			 copy = File.createTempFile("copy-", ".tmp", parent);
+				
+	         // create file streams and transfer data
+	         out = new FileOutputStream(copy);
+	         in = new FileInputStream(source);
+	         time = source.lastModified();
 	         int len;
-	         byte[] buffer = new byte[2*2048];
+	         byte[] buffer = new byte[4*2048];
 	         writeCrc = transferData2(in, out, buffer);
 	         in.close();
 	         out.close();
 	         if (carryTime) {
-	        	 output.setLastModified( time );
+	        	 copy.setLastModified( time );
 	         }
-	
-	         // control output CRC
-	         in = new FileInputStream( output );
+	         // control copy file CRC
+	         in = new FileInputStream(copy);
 	         crcSum = new CRC32();
 	         while ((len = in.read(buffer)) != -1) {
-	            crcSum.update( buffer, 0, len );
+	        	if (Thread.interrupted()) {
+	        		throw new InterruptedException();
+	        	}
+	            crcSum.update(buffer, 0, len);
 	         }
+	         in.close();
 	         if ( writeCrc != (int)crcSum.getValue() ) {
 	            throw new StreamCorruptedException( "bad copy CRC" );
 	         }
 
+			 // create the target file (rename completed copy)
+			 target.delete();
+			 if (!copy.renameTo(target)) {
+			 	throw new IOException("rename to target failed: " + target);
+			 }
+
 	      } catch (IOException e) {
 	         System.err.println(
-	            "*** error during file copy: " + output.getAbsolutePath());
+	            "*** error during file copy: " + target.getAbsolutePath());
 	         System.err.println(e);
 	         throw e;
+
 	      } finally {
-	         if ( in != null )
-	            in.close();
-	         if ( out != null )
-	            out.close();
+	         if ( in != null ) in.close();
+	         if ( out != null ) out.close();
+	         if ( copy != null ) copy.delete();
 	      }
 	   } // copyFile
 
 	/**
 	 * Transfers the contents of the input stream to the output stream
-	 * until the end of input stream is reached. This function version returns 
-	 * a CRC32 value over the entire data stream transferred.
+	 * until the end of input stream is reached, using the given data buffer. 
+	 * This function version returns a CRC32 value of the entire data stream 
+	 * transferred.
+	 * <p>Operation stops unfinished when interrupted state of the current thread
+	 * is detected. The interrupted state is cleared and an InterruptedException
+	 * thrown. 
 	 * 
 	 * @param input the input stream (non-null)
 	 * @param output the output stream (if null, a valid CRC value is still created)
 	 * @param buffer byte[] the transfer buffer
 	 * @return int CRC value of the data stream read
 	 * @throws java.io.IOException
+	 * @throws InterruptedException if the calling thread was interrupted
 	 */
 	public static int transferData2 ( InputStream input, OutputStream output,
-	      byte[] buffer ) throws java.io.IOException {
+	      byte[] buffer ) throws java.io.IOException, InterruptedException {
 	   CRC32 crc = new CRC32();
 	   int len;
 	
-	//   Log.log( 10, "(Util) data transfer start" ); 
-	   while ( (len = input.read( buffer )) > 0 ) {
-	      if ( output != null ) {
-	         output.write( buffer, 0, len );
+	   while ( (len = input.read( buffer )) > 0) {
+       	  if (Thread.interrupted()) {
+    		 throw new InterruptedException();
+       	  }
+	      if (output != null) {
+	         output.write(buffer, 0, len);
 	      }
-	      crc.update( buffer, 0, len );
+	      crc.update(buffer, 0, len);
 	   }
-	//   Log.log( 10, "(Util) data transfer end" );
 	   return (int)crc.getValue();
-	}  // transferData2
+	}
 
-	/** Renders a string based on <code>text</code> where any occurence of
+	/**
+	 * Transfers the contents of the input stream to the output stream
+	 * until the end of input stream is reached. A buffer is created. 
+	 * This function version returns a CRC32 value of the entire data stream 
+	 * transferred.
+	 * Operation stops unfinished when interrupted state of the current thread
+	 * is detected. The interrupted state is cleared and an InterruptedException
+	 * thrown. 
+	 * 
+	 * @param input the input stream (non-null)
+	 * @param output the output stream (if null, a valid CRC value is still created)
+	 * @param bufferSize the size of the transfer buffer
+	 * @return int CRC value of the data stream read
+	 * @throws java.io.IOException
+	 * @throws InterruptedException if the calling thread was interrupted
+	 */
+	public static int transferData2 (InputStream input, OutputStream output,
+	      int bufferSize) throws java.io.IOException, InterruptedException {
+	   byte[] buffer = new byte[bufferSize];
+	   return transferData2(input, output, buffer);
+	}
+
+	/** Renders a string based on <code>text</code> where any occurrence of
 	 *  <code>token</code> is replaced by <code>substitute</code>. Replace
-	 *  takes place iteratively until not further occurence exists.
+	 *  takes place iteratively until not further occurrence exists.
 	 *  
 	 *  @return String the result of transformation; <b>null</b> if any of the
 	 *          parameters is <b>null</b>
-	 *  @since 0-4-0        
 	 */
-	public static String substituteText ( String text, String token, String substitute )
-	{
+	public static String substituteText ( String text, String token, String substitute ) {
 	   int index;
 	
 	   if ( text == null | token == null | substitute == null || 
 	         (index=text.indexOf( token )) < 0 )
 	       return text;
 	
-	   while ( index > -1 )
-	   {
+	   while ( index > -1 ) {
 	      text = text.substring( 0, index ) + substitute +
 	             text.substring( index+token.length() );
 	      index = text.indexOf( token );
 	   }
 	   return text;
-	}  // substituteText
+	}
 
 	/** Renders a string based on <code>text</code> where the first occurrence of
 	 *  <code>token</code> is replaced by <code>substitute</code>.
@@ -848,24 +897,20 @@ public class Util {
 	 *  
 	 *  @return String the result of substitute; <b>null</b> if any of the
 	 *          parameters is <b>null</b>
-	 *  @since 0-4-0        
 	 */
-	public static String substituteTextS ( String text, String token, 
-	      String substitute )
-	{
+	public static String substituteTextS ( String text, String token, String substitute ) {
 	   int index;
 	
 	   if ( text == null | token == null | substitute == null || 
 	        token.length() == 0 || (index=text.indexOf( token )) < 0 )
 	      return text;
 	
-	   if ( index > -1 )
-	   {
+	   if ( index > -1 ) {
 	      text = text.substring( 0, index ) + substitute +
 	             text.substring( index+token.length() );
 	   }
 	   return text;
-	}  // substituteText
+	}
 
 	/** Reads the contents of the given file and returns them as a byte array.
 	 * 
@@ -1004,6 +1049,46 @@ public class Util {
 		return text;
 	}
 	
+	/** Returns the given time value in milliseconds.
+	 * 
+	 * @param time long value
+	 * @param unit {@code TimeUnit}
+	 * @return long
+	 */
+	public static long getMilliTime (long time, TimeUnit unit) {
+		long v = 0;
+		switch (unit) {
+		case DAYS: v = time * TM_DAY; 
+			break;
+		case HOURS: v = time * TM_HOUR;
+			break;
+		case MICROSECONDS: v = time / 1000;
+			break;
+		case MILLISECONDS: v = time;
+			break;
+		case MINUTES: v = time * TM_MINUTE;
+			break;
+		case NANOSECONDS: v = time / 1000000;
+			break;
+		case SECONDS: v = time * TM_SECOND;
+			break;
+		default:
+		}
+		return v;
+	}
+
+	/** Makes the current thread sleep for the given amount of time or until
+	 * it is interrupted. Interruption is not indicated.
+	 * 
+	 * @param millis long time value in milliseconds
+	 */
+	public static void sleep (long millis) {
+		try {
+			Thread.sleep(millis);
+		} catch (InterruptedException e) {
+		}
+	}
+	
 	/** Returns the encoded program version value consisting of four consecutive 
 	 * version detail numbers.
 	 *  
@@ -1071,6 +1156,40 @@ public class Util {
 	 */
 	public static long timeDelta (long time) {
 		return System.currentTimeMillis() - time;
+	}
+
+	/** Returns a {@code BufferedReader} object created to read the given
+	 * input file. 
+	 * <p>NOTE: This method creates an open input stream for the given file,
+	 * the resulting reader should be closed after use in order to release
+	 * the file resource.
+	 * 
+	 * @param f File text input file
+	 * @return {@code BufferedReader} 
+	 * @throws FileNotFoundException
+	 */
+	public static BufferedReader createReader (File f) throws FileNotFoundException {
+		FileInputStream in = new FileInputStream(f);
+		Reader reader = new InputStreamReader(in);
+		BufferedReader rd = new BufferedReader(reader); 
+		return rd;
+	}
+
+	/** Returns a {@code BufferedWriter} object created to write to the given
+	 * output file. 
+	 * <p>NOTE: This method creates an open output stream for the given file,
+	 * the resulting writer should be closed after use in order to release
+	 * the file resource.
+	 * 
+	 * @param f File text output file
+	 * @return {@code BufferedWriter} 
+	 * @throws FileNotFoundException
+	 */
+	public static BufferedWriter createWriter (File f) throws FileNotFoundException {
+		FileOutputStream out = new FileOutputStream(f);
+		Writer writer = new OutputStreamWriter(out);
+		BufferedWriter wr = new BufferedWriter(writer); 
+		return wr;
 	}
 }
 

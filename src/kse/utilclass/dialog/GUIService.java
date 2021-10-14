@@ -125,7 +125,7 @@ public class GUIService {
 	 * @param e if not <b>null</b> this exception is reported in the message text 
 	 *        
 	 */ 
-	public static void failureMessage (Component owner, String text, Exception e) {
+	public static void failureMessage (Component owner, String text, Throwable e) {
 	   if ( text == null ) {
 	      text = "something bad happened:";
 	   }
@@ -143,7 +143,7 @@ public class GUIService {
 	 * @param e if not <b>null</b> this exception is reported in the message text 
 	 *        
 	 */ 
-	public static void failureMessage (String text, Exception e) {
+	public static void failureMessage (String text, Throwable e) {
 	   failureMessage(mainFrame, text, e);
 	}
 
@@ -195,7 +195,7 @@ public class GUIService {
 	 * @param e Exception; may be null
 	 * @return String Html encoded message or null if both arguments are null 
 	 */
-	private static String getExceptionMessage (String text, Exception e) {
+	private static String getExceptionMessage (String text, Throwable e) {
 	   String msg = text;
 	   
 	   if (e != null) {

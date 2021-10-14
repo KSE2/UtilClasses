@@ -4,6 +4,7 @@ import java.awt.BorderLayout;
 import java.awt.Window;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.lang.reflect.InvocationTargetException;
 import java.util.Objects;
 
 import javax.swing.JButton;
@@ -19,6 +20,7 @@ public class GSDialog extends JDialog {
 	private ButtonBarModus buttonBarModus = ButtonBarModus.OK;
 	private ActionListener buttonPerformer = new ButtonPerformer();
 	private boolean closedByEscape;
+	private boolean closedByButton;
 	
 
 	public GSDialog (Window owner, ButtonBarModus dlgType, boolean modal) {
@@ -101,10 +103,11 @@ public class GSDialog extends JDialog {
 	public DialogTerminationType getTerminationType () {
 		if (!isDisplayable()) {
 			if (closedByEscape) return DialogTerminationType.CLOSE_BY_ESCAPE;
+			if (!closedByButton) return DialogTerminationType.INTERRUPTED;
 			if (performBlock != null) {
 				if (performBlock.getNoTerminated()) return DialogTerminationType.NO_PRESSED;
 				if (performBlock.getUserConfirmed()) return DialogTerminationType.OK_PRESSED;
-				else return DialogTerminationType.CANCEL_PRESSED;
+				return DialogTerminationType.CANCEL_PRESSED;
 			}
 
 		// displayable
@@ -114,6 +117,24 @@ public class GSDialog extends JDialog {
 		return null;
 	}
 	
+	
+	
+	@Override
+	public void dispose() {
+		Runnable r = new Runnable() {
+			@Override
+			public void run() {
+				GSDialog.super.dispose();
+			}
+		};
+		
+		try {
+			GUIService.performOnEDT(r, true);
+		} catch (InvocationTargetException | InterruptedException e) {
+			e.printStackTrace();
+		}
+	}
+
 	private void init () {
 		
 		// set up the button bar
@@ -125,6 +146,7 @@ public class GSDialog extends JDialog {
 		case SINGLE: 
 		case CONTINUE:
 		case OK:
+		case BREAK:
 			nrbut = 1;
 			break;
 		case DOUBLE:
@@ -137,6 +159,7 @@ public class GSDialog extends JDialog {
 		case YES_NO_BREAK:
 			nrbut = 3;
 			break;
+		default:
 		}
 		if (nrbut == 0) return;
 		
@@ -161,19 +184,26 @@ public class GSDialog extends JDialog {
 		
 		// first button OK
 		if (buttonBarModus == ButtonBarModus.OK || 
-				buttonBarModus == ButtonBarModus.OK_BREAK) {
-				b = getButton(0);
-				b.setText("OK");
-				buttonTypes[0] = ButtonType.YES_BUTTON;
-			}
+			buttonBarModus == ButtonBarModus.OK_BREAK) {
+			b = getButton(0);
+			b.setText("OK");
+			buttonTypes[0] = ButtonType.YES_BUTTON;
+		}
 		
 		// first button YES
 		if (buttonBarModus == ButtonBarModus.YES_NO || 
-				buttonBarModus == ButtonBarModus.YES_NO_BREAK) {
-				b = getButton(0);
-				b.setText("Ja");
-				buttonTypes[0] = ButtonType.YES_BUTTON;
-			}
+			buttonBarModus == ButtonBarModus.YES_NO_BREAK) {
+			b = getButton(0);
+			b.setText("Ja");
+			buttonTypes[0] = ButtonType.YES_BUTTON;
+		}
+		
+		// first button BREAK
+		if (buttonBarModus == ButtonBarModus.BREAK) {
+			b = getButton(0);
+			b.setText("Abbruch");
+			buttonTypes[0] = ButtonType.CANCEL_BUTTON;
+		}
 		
 		// second button BREAK
 		if (buttonBarModus == ButtonBarModus.OK_BREAK || 
@@ -233,6 +263,7 @@ public class GSDialog extends JDialog {
 
 			// call user routine
 			if (performBlock != null && performBlock.perform_button(i, getButtonType(i), button)) {
+				closedByButton = true;
 				dispose();
 			}
 		}
