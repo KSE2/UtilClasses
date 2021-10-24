@@ -1,5 +1,9 @@
 package kse.utilclass.misc;
 
+import java.awt.Dimension;
+import java.awt.Point;
+import java.awt.Rectangle;
+import java.awt.Toolkit;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.ByteArrayOutputStream;
@@ -20,10 +24,13 @@ import java.io.Writer;
 import java.nio.BufferUnderflowException;
 import java.nio.CharBuffer;
 import java.util.Comparator;
+import java.util.Date;
+import java.util.GregorianCalendar;
 import java.util.Iterator;
 import java.util.Objects;
 import java.util.Random;
 import java.util.Set;
+import java.util.TimeZone;
 import java.util.concurrent.TimeUnit;
 import java.util.zip.CRC32;
 
@@ -364,6 +371,17 @@ public class Util {
 	   return sha.digest();
 	}
 
+	/** Returns a SHA-256 fingerprint value of the parameter string buffer.
+	 * 
+	 * @param buffer <code>String</code> data to digest
+	 * @return SHA256 digest
+	 */
+	public static byte[] fingerPrint ( String buffer ) {
+	   SHA256 sha = new SHA256();
+	   sha.update( buffer );
+	   return sha.digest();
+	}
+
 	/**
 	 * Writes a 32-bit integer value to a byte array as
 	 * 4 sequential bytes in a Big-Endian manner 
@@ -603,19 +621,22 @@ public class Util {
 	 * Transfers the contents of the input stream to the output stream
 	 * until the end of input stream is reached, using the given data buffer.
 	 * Operation stops unfinished when interrupted state of the current thread
-	 * is detected. The interrupted state is not cleared by this method. 
+	 * is detected. The interrupted state is cleared end an exception is thrown. 
 	 * 
 	 * @param input the input stream (non-null)
 	 * @param output the output stream (non-null)
 	 * @param buffer transfer buffer
 	 * @throws java.io.IOException
+	 * @throws InterruptedException if the calling thread was interrupted
 	 */
 	public static void transferData (InputStream input, OutputStream output,
-	      byte[] buffer) throws java.io.IOException {
+	      byte[] buffer) throws java.io.IOException, InterruptedException {
 	   Objects.requireNonNull(buffer, "transfer buffer is null");
-	   Thread thread = Thread.currentThread();
 	   int len;
-	   while ((len = input.read(buffer)) > 0  && !thread.isInterrupted()) {
+	   while ((len = input.read(buffer)) > -1) {
+       	  if (Thread.interrupted()) {
+     		 throw new InterruptedException();
+       	  }
 	      output.write(buffer, 0, len);
 	   }
 	}
@@ -624,15 +645,16 @@ public class Util {
 	 * Transfers the contents of the input stream to the output stream
 	 * until the end of input stream is reached. A buffer is created.
 	 * Operation stops unfinished when interrupted state of the current thread
-	 * is detected. The interrupted state is not cleared by this method. 
+	 * is detected. The interrupted state is cleared end an exception is thrown. 
 	 * 
 	 * @param input the input stream (non-null)
 	 * @param output the output stream (non-null)
 	 * @param bufferSize the size of the transfer buffer
 	 * @throws java.io.IOException
+	 * @throws InterruptedException if the calling thread was interrupted
 	 */
 	public static void transferData (InputStream input, OutputStream output,
-	      int bufferSize) throws java.io.IOException {
+	      int bufferSize) throws java.io.IOException, InterruptedException {
 	   byte[] buffer = new byte[bufferSize];
 	   transferData(input, output, buffer);
 	}
@@ -704,8 +726,10 @@ public class Util {
 	 * @param bottom File source (lower part) and target file
 	 * @param top File upper part
 	 * @throws IOException
+	 * @throws InterruptedException 
 	 */
-	public static void concatFiles ( File bottom, File top ) throws IOException {
+	public static void concatFiles ( File bottom, File top ) 
+				throws IOException, InterruptedException {
 	   FileOutputStream out = new FileOutputStream( bottom, true );
 	   FileInputStream in = new FileInputStream( top );
 	   transferData( in, out, 4*2048 );
@@ -718,6 +742,38 @@ public class Util {
 	    * the output file is a relative path, it is made absolute against the 
 	    * directory of the input file.  The output file will be overwritten if
 	    * it exist. Function reports errors to <code>System.err</code>.
+	    * The time mark of the resulting file is the operation time.
+	    * Operation stops unfinished when interrupted state of the current thread
+	    * is detected. The interrupted state is cleared and an 
+	    * InterruptedException thrown. 
+	    * <p>A CRC32 check is performed to compare source and copy after the 
+	    * transfer process and if results negative a 
+	    * {@code StreamCorruptedException} is thrown.
+	    * <p>What is more, an intermediate temporary file is created into which
+	    * the source is copied before it is renamed to the target. This ensures
+	    * only completed and tested data transfers will be shown by the target
+	    * file name. 
+	    *  
+	    * @param source File source File object
+	    * @param target File target File object
+	    * @throws IOException if the function could not be completed
+	    *         because of an IO or CRC-check error or if the thread was 
+	    *         interrupted
+	    * @throws InterruptedException if the calling thread was interrupted 
+	    *         while copying was unfinished
+	    */
+	   public static void copyFile (File source, File target)
+                                throws java.io.IOException, InterruptedException {
+		   copyFile(source, target, false);
+	   }
+	   
+	   /** A security file copy method. 
+	    * Copies the contents of any disk file to a specified output file.  If 
+	    * the output file is a relative path, it is made absolute against the 
+	    * directory of the input file.  The output file will be overwritten if
+	    * it exist. Function reports errors to <code>System.err</code>.
+	    * The time mark of the resulting file can optionally be the operation 
+	    * time or the original file's time.
 	    * Operation stops unfinished when interrupted state of the current thread
 	    * is detected. The interrupted state is cleared and an 
 	    * InterruptedException thrown. 
@@ -732,7 +788,7 @@ public class Util {
 	    * @param source File source File object
 	    * @param target File target File object
 	    * @param carryTime boolean if true the "last modified" time is set to 
-	    *        source value
+	    *        source value otherwise assumes operation time
 	    * @throws IOException if the function could not be completed
 	    *         because of an IO or CRC-check error or if the thread was 
 	    *         interrupted
@@ -746,13 +802,11 @@ public class Util {
 	      FileInputStream in = null;
 	      FileOutputStream out = null;
 	      CRC32 crcSum;
-	      int writeCrc;
-	      long time;
 	
 	      // control parameter
-	      if ( source == null || target == null )
+	      if (source == null || target == null)
 	         throw new NullPointerException("an argument is null");
-	      if ( source.equals(target) ) return;
+	      if (source.equals(target)) return;
 	
 	      try {
 	         // make output file absolute (if not already)
@@ -771,10 +825,10 @@ public class Util {
 	         // create file streams and transfer data
 	         out = new FileOutputStream(copy);
 	         in = new FileInputStream(source);
-	         time = source.lastModified();
+	         long time = source.lastModified();
 	         int len;
 	         byte[] buffer = new byte[4*2048];
-	         writeCrc = transferData2(in, out, buffer);
+	         int writeCrc = transferData2(in, out, buffer);
 	         in.close();
 	         out.close();
 	         if (carryTime) {
@@ -790,8 +844,8 @@ public class Util {
 	            crcSum.update(buffer, 0, len);
 	         }
 	         in.close();
-	         if ( writeCrc != (int)crcSum.getValue() ) {
-	            throw new StreamCorruptedException( "bad copy CRC" );
+	         if (writeCrc != (int)crcSum.getValue()) {
+	            throw new StreamCorruptedException("bad copy CRC");
 	         }
 
 			 // create the target file (rename completed copy)
@@ -807,9 +861,9 @@ public class Util {
 	         throw e;
 
 	      } finally {
-	         if ( in != null ) in.close();
-	         if ( out != null ) out.close();
-	         if ( copy != null ) copy.delete();
+	         if (in != null) in.close();
+	         if (out != null) out.close();
+	         if (copy != null) copy.delete();
 	      }
 	   } // copyFile
 
@@ -834,7 +888,7 @@ public class Util {
 	   CRC32 crc = new CRC32();
 	   int len;
 	
-	   while ( (len = input.read( buffer )) > 0) {
+	   while ( (len = input.read( buffer )) > -1) {
        	  if (Thread.interrupted()) {
     		 throw new InterruptedException();
        	  }
@@ -1191,5 +1245,254 @@ public class Util {
 		BufferedWriter wr = new BufferedWriter(writer); 
 		return wr;
 	}
+
+    /** Returns the standard time string for the user's (VM) time zone.
+    * 
+    * @param time long universal time value in epoch milliseconds
+    * @return String formated time string (length == 19)
+    */
+   public static String standardTimeString ( long time ) {
+      return standardTimeString( time, TimeZone.getDefault() );
+   }
+
+    /** Returns the standard time string for the given epoch time and time zone.
+    * 
+    * @param time long universal time value in epoch milliseconds
+    * @param tz <code>TimeZone</code> for which to interpret the time
+    *        or <b>null</b> for the current default time zone 
+    * @return String formated time string (length == 19)
+    */
+   public static String standardTimeString ( long time, TimeZone tz ) {
+      GregorianCalendar cal;
+      StringBuffer sbuf;
+      
+      if ( tz == null )
+         tz = TimeZone.getDefault();
+      
+      cal = new GregorianCalendar( tz );
+      cal.setTimeInMillis( time );
+      sbuf = new StringBuffer(20);
+      sbuf.append( number( cal.get( GregorianCalendar.YEAR ), 4 ) );
+      sbuf.append( '-' );
+      sbuf.append( number( cal.get( GregorianCalendar.MONTH ) + 1, 2 ) );
+      sbuf.append( '-' );
+      sbuf.append( number( cal.get( GregorianCalendar.DAY_OF_MONTH ), 2 ) );
+      sbuf.append( ' ' );
+      sbuf.append( number( cal.get( GregorianCalendar.HOUR_OF_DAY ), 2 ) );
+      sbuf.append( ':' );
+      sbuf.append( number( cal.get( GregorianCalendar.MINUTE ), 2 ) );
+      sbuf.append( ':' );
+      sbuf.append( number( cal.get( GregorianCalendar.SECOND ), 2 ) );
+      return sbuf.toString();
+   }  // standardTimeString
+
+	/** Returns a number representation of the parameter integer value.
+    *  The minimum length of the number is guaranteed by leading '0'
+    *  characters.   
+    * 
+    * @param v long integer value
+    * @param length minimum length of number string 
+    * @return String number
+    */
+   public static String number ( long v, int length ) {
+      StringBuffer sbuf;
+      String hstr;
+      int i, n;
+      
+      sbuf = new StringBuffer( length );
+      hstr = String.valueOf( v );
+      n = length - hstr.length();
+      for ( i = 0; i < n; i++ )
+         sbuf.append( '0' );
+      sbuf.append(  hstr );
+      return sbuf.toString();
+   }
+
+	/** Returns a number representation of the parameter integer value
+	 *  interpreted to the given radix. Letters appear in upper case.
+	 *  The minimum length of the number is guaranteed by leading '0'
+	 *  characters.   
+	 * 
+	 * @param v long integer value
+	 * @param length int minimum length of number string
+	 * @param radix int radix of the integer  
+	 * @return String number
+	 */
+	public static String number ( long v, int length, int radix ) {
+	   StringBuffer sbuf = new StringBuffer( length );
+	   String hstr = Long.toString(v, radix).toUpperCase();
+	   int n = length - hstr.length();
+	   for ( int i = 0; i < n; i++ )
+	      sbuf.append( '0' );
+	   sbuf.append(  hstr );
+	   return sbuf.toString();
+	}
+	
+	/** Returns true if and only if the two parameters are not equal.
+	 * (This makes a quick return for null and instance identity, and
+	 * probes the "equals()" relation otherwise.)
+	 * 
+	 * @param v1 Object one 
+	 * @param v2 Object two
+	 * @return boolean
+	 */
+	public static boolean notEqual (Object v1, Object v2) {
+	   boolean equal = v1 == v2 || (v1 != null && v1.equals(v2));
+	   return !equal;
+	}
+
+	/**
+	 * Defines new window bounds (location + dimension) by interpreting the relation
+	 * of a window <tt>win</tt> to a screen dimension <tt>screen</tt>. Window locations 
+	 * are expressed in coordinates of the screen. Returns <b>null</b> if
+	 * window was <b>null</b>.
+	 *    
+	 * @param screen Dimension the screen dimensions in x and y coordinates;
+	 *               <b>null</b> defaults to system screen
+	 * @param win Rectangle window size and position in screen coordinates
+	 * @param resizable boolean if <b>true</b> the window will get resized if it
+	 *        exceeds screen limits
+	 * @param clipping boolean if <b>true</b> it is ok if only a part of the window
+	 *        is visible on the screen while its top-bar remains functional
+	 * @return Rectangle new bounds definition (potentially corrected) of window <tt>win</tt>
+	 *         or <b>null</b> if <tt>win</tt> was <b>null</b>
+	 */
+	public static Rectangle correctedWindowBounds ( Dimension screen, Rectangle win, 
+	                                          boolean resizable, boolean clipping )	{
+	   Rectangle result;
+	   Dimension size;
+	   Point loc;
+	   int minVisHig, minVisWid, diff, minHeight, minWidth;
+
+	   if ( win == null ) return null;
+	   
+	   // get system screen if no screen supplied
+	   if ( screen == null ) {
+	      screen = Toolkit.getDefaultToolkit().getScreenSize();
+	   }
+	   
+	   size = win.getSize();
+	   loc = win.getLocation();
+	   result = win.getBounds();
+	   minVisHig = 50; minVisWid = 75;
+	   
+	   // correct window size if opted and necessary
+	   if ( resizable ) {
+	      if ( size.height > screen.height )
+	         size.height = screen.height;
+	      if ( size.width > screen.width )
+	         size.width = screen.width;
+	      result.setSize( size );
+	   }
+	   
+	   // correct window location if necessary
+	   // correct top window bar
+	   minHeight = clipping ? minVisHig : result.height;
+	   if ( (diff = screen.height - loc.y - minHeight) < 0 ) {
+	      loc.y += diff;
+	   }
+	   loc.y =  Math.max( loc.y, 0 );
+
+	   minWidth = clipping ? minVisWid : result.width;
+	   if ( (diff = screen.width - loc.x - minWidth) < 0 ) {
+	      loc.x += diff;
+	   }
+	   loc.x =  Math.max( loc.x, 0 );
+	   
+	   result.setLocation( loc );
+	   return result;
+	}
+
+	/**
+	 * Defines new window bounds (location + dimension) by interpreting the relation
+	 * of a window <tt>win</tt> to the size of the current system screen (primary display).
+	 * Window locations are expressed in coordinates of the screen.
+	 *    
+	 * @param win Rectangle window size and position in screen coordinates
+	 * @param resizable boolean if <b>true</b> the window will get resized if it
+	 *        exceeds screen limits
+	 * @param clipping boolean if <b>true</b> it is ok if only a part of the window
+	 *        is visible on the screen while its top-bar remains functional
+	 * @return Rectangle new bounds definition (potentially corrected) of window <tt>win</tt> 
+	 */
+	public static Rectangle correctedWindowBounds ( 
+			Rectangle win, boolean resizable, boolean clipping ) {
+	   Dimension screen = Toolkit.getDefaultToolkit().getScreenSize();
+	   screen.height -= 30;
+	   return correctedWindowBounds( screen, win, resizable, clipping );
+	}
+
+	/**
+	 * Returns a technical time string apt for collation purposes
+	 * for the user's (VM) time zone.
+	 * 
+	 * @param time long universal time value in epoch milliseconds
+	 * @return String time string (length == 14)
+	 */
+	public static String technicalTimeString ( long time ) {
+	   return technicalTimeString( time, null );
+	}
+
+	/**
+	 * Returns a technical time string apt for collation purposes.
+	 * 
+	 * @param time long universal time value in epoch milliseconds
+	 * @param tz <code>TimeZone</code> for which to interpret the time
+	 *        or <b>null</b> for the current default time zone 
+	 * @return String time string (length == 14)
+	 */
+	public static String technicalTimeString ( long time, TimeZone tz )	{
+	   GregorianCalendar cal;
+	   StringBuffer sbuf;
+	   
+	   if ( tz == null ) {
+	      tz = TimeZone.getDefault();
+	   }
+	   
+	   cal = new GregorianCalendar( tz );
+	   cal.setTimeInMillis( time );
+	   sbuf = new StringBuffer(20);
+	   sbuf.append( number( cal.get( GregorianCalendar.YEAR ), 4 ) );
+	   sbuf.append( number( cal.get( GregorianCalendar.MONTH ) + 1, 2 ) );
+	   sbuf.append( number( cal.get( GregorianCalendar.DAY_OF_MONTH ), 2 ) );
+	   sbuf.append( number( cal.get( GregorianCalendar.HOUR_OF_DAY ), 2 ) );
+	   sbuf.append( number( cal.get( GregorianCalendar.MINUTE ), 2 ) );
+	   sbuf.append( number( cal.get( GregorianCalendar.SECOND ), 2 ) );
+	   return sbuf.toString();
+	}  
+
+	/** Returns <b>true</b> if and only if the parameter string
+	 * complies with some formal requirements for an email address.
+	 * Note that leading and trailing blanks in the string are ignored.
+	 *  
+	 * @param hstr String text
+	 * @return boolean
+	 */
+	public static boolean isEmailAddress ( String hstr ) {
+	   int p1, p2, p3, len;
+	   
+	   if ( hstr != null && hstr.length() > 4 ) {
+	      hstr = hstr.trim();
+	      len = hstr.length();
+	      p1 = hstr.indexOf( '@' );
+	      p2 = hstr.lastIndexOf( '.' );
+	      p3 = hstr.indexOf( ' ' );
+	      return len < 255 & p3 == -1 & p1 > 0 & p2 > p1 & p2 < len-1;
+	   }
+	   return false;
+	}
+
+	/**
+	 * Returns the human readable time string for the given epoch time, 
+	 * expressed in the current VM timezone and locale.
+	 *  
+	 * @param time long universal time value in epoch milliseconds
+	 * @return String formatted time string (variable length)
+	 */ 
+	@SuppressWarnings("deprecation")
+	public static String localeTimeString ( long time )	{
+	   return new Date( time ).toLocaleString();
+	}
+
 }
 
