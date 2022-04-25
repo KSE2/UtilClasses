@@ -23,8 +23,10 @@ import java.io.UnsupportedEncodingException;
 import java.io.Writer;
 import java.nio.BufferUnderflowException;
 import java.nio.CharBuffer;
+import java.util.BitSet;
 import java.util.Comparator;
 import java.util.Date;
+import java.util.Enumeration;
 import java.util.GregorianCalendar;
 import java.util.Iterator;
 import java.util.Objects;
@@ -33,6 +35,11 @@ import java.util.Set;
 import java.util.TimeZone;
 import java.util.concurrent.TimeUnit;
 import java.util.zip.CRC32;
+
+import javax.swing.JTree;
+import javax.swing.tree.TreePath;
+
+import kse.utilclass.dialog.GUIService;
 
 public class Util {
 
@@ -237,6 +244,21 @@ public class Util {
 	      pos += 2;
 	   }
 	   return out.toByteArray();
+	}
+
+	/** Returns the rear part of the given string, comprising the given length.
+	 * If the given string is smaller than the given length, the argument itself 
+	 * is returned.
+	 * 
+	 * @param s String
+	 * @param len int substring length
+	 * @return String
+	 */
+	public static String tailStr (String s, int len) {
+		requirePositive(len);
+		int start = s.length()-len;
+		String res = start < 0 ? s : s.substring(start, len);
+		return res;
 	}
 
 	/**
@@ -617,6 +639,19 @@ public class Util {
 	   return copy;
 	}
 
+	/** Returns a new array of bytes in which the order of bytes is reversed.
+	 * 
+	 * @param b byte[] source array
+	 * @return byte[]
+	 */
+	public static byte[] reversedArray (byte[] b) {
+		byte[] b1 = new byte[b.length];
+		for (int i = 0; i < b.length; i++) {
+			b1[b.length -i -1] = b[i]; 
+		}
+		return b1;
+	}
+	
 	/**
 	 * Transfers the contents of the input stream to the output stream
 	 * until the end of input stream is reached, using the given data buffer.
@@ -981,6 +1016,28 @@ public class Util {
 		return buffer;
 	}
 
+	/** Creates a new buffer of the given length and reads from the given data-file
+	 * at the given position. An exception is thrown if there is not enough data
+	 * in the file to fill the requested length.
+	 * 
+	 * @param file File 
+	 * @param pos long data position
+	 * @param length int data length
+	 * @return byte[] data buffer
+	 * @throws IOException
+	 */
+	public static byte[] readFileSpace (File file, long pos, int length) throws IOException {
+		byte[] buffer = new byte[length];
+		RandomAccessFile f = new RandomAccessFile(file, "r");
+		try {
+			f.seek(pos);
+			f.readFully(buffer);
+		} finally {
+			f.close();
+		}
+		return buffer;
+	}
+	   
 	/** Reads the contents of the given file and returns them as a byte array.
 	 * 
 	 * @param file File file to read
@@ -1334,11 +1391,23 @@ public class Util {
 	 * 
 	 * @param v1 Object one 
 	 * @param v2 Object two
-	 * @return boolean
+	 * @return boolean true == the references are not equivalent
 	 */
 	public static boolean notEqual (Object v1, Object v2) {
 	   boolean equal = v1 == v2 || (v1 != null && v1.equals(v2));
 	   return !equal;
+	}
+
+	/** Returns true if and only if the two parameters are equal.
+	 * (This makes a quick return for null and instance identity, and
+	 * probes the "equals()" relation otherwise.)
+	 * 
+	 * @param v1 Object one 
+	 * @param v2 Object two
+	 * @return boolean true == both references are equivalent
+	 */
+	public static boolean equal (Object v1, Object v2) {
+	   return !notEqual(v1, v2);
 	}
 
 	/**
@@ -1494,5 +1563,83 @@ public class Util {
 	   return new Date( time ).toLocaleString();
 	}
 
+	public static byte[] getTreeExpansionInfo (JTree tree) {
+		TreePath root = tree.getPathForRow(0);
+		if (root == null) return new byte[0];
+		
+		BitSet set = new BitSet();
+		Enumeration<TreePath> en = tree.getExpandedDescendants(root);
+		if (en == null) return new byte[0];
+
+		while (en.hasMoreElements()) {
+			TreePath p = en.nextElement();
+			int row = tree.getRowForPath(p);
+			set.set(row);
+		}
+
+		byte[] arr = set.toByteArray();
+		return arr;
+	}
+	
+	public static void setTreeExpansionFromInfo (JTree tree, byte[] info) {
+		if (info == null) return;
+		
+		Runnable run = new Runnable() {
+			@Override
+			public void run() {
+				BitSet set = BitSet.valueOf(info);
+				
+				// ensure all nodes are collapsed
+				for (int i = tree.getRowCount(); i >= 0; i--) {
+					tree.collapseRow(i);
+				}
+				
+				int x = -1;
+				while ((x = set.nextSetBit(x+1)) > -1) {
+					tree.expandRow(x);
+				}
+			}
+		};
+		GUIService.performOnEDT(run);
+	}
+
+	public static int textVariance ( char[] ca )
+	   {
+	      BitSet set = new BitSet();
+	      int i;
+	      
+	      for ( i = 0; i < ca.length; i++ )
+	         set.set( ca[i] );
+	      return set.cardinality();         
+	   }
+
+	/** Transforms the given text into a HTML encoded version which is 
+	 * broken down into multiple lines on the given column limit.
+	 * 
+	 * @param text String, may be null
+	 * @param limit int max number of columns in a line
+	 * @return String HTML text or null if input is null 
+	 */
+	public static String breakDownText (String text, int limit) {
+		if (text == null) return null;
+		StringBuffer sbuf = new StringBuffer(text.length() + 100);
+		if (!text.toLowerCase().startsWith("<html>")) {
+			sbuf.append("<html>");
+		}
+	
+		String pcs[] = text.split(" ");
+		int cols = 0;
+		for (String hs : pcs) {
+			int pclen = hs.length();
+			if (cols > 0 && cols + pclen > limit) {
+				sbuf.append("<br>");
+				cols = 0;
+			}
+			sbuf.append(hs);
+			sbuf.append(" ");
+			cols += pclen + 1; 
+		}
+		return sbuf.toString();
+	}
 }
 

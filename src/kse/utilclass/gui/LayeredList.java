@@ -378,16 +378,18 @@ public void addValues (ListElement[] vector) {
    }
 }
 
-/** Returns all elements of <code>list</code> which are visible and a direct 
- * child or descendant of the element defined by parameter <code>hierarchy</code>.
+/** Returns all elements of <code>list</code> which are visible and descendants
+ * of the element specified by parameter <code>hierarchy</code>. The 'recurse'
+ * parameter determines whether only direct children or all descendants shall
+ * be included. The result is empty if there are no such descendants defined.
  * 
-* 
-* @param list LayeredList
-* @param hierarchy String
-* @param recurse boolean if true then search includes sub-folders otherwise 
-*        only children are returned
-* @return array of <code>ListElement</code> or null if <code>list</code> was null
-*/ 
+ * @param list LayeredList
+ * @param hierarchy String
+ * @param recurse boolean if true then search includes sub-folders otherwise 
+ *        only children are returned
+ * @return array of <code>ListElement</code> or null if <code>list</code> was 
+ *        null
+ */ 
 public static ListElement[] getFolderElements (LayeredList list, 
        String hierarchy, boolean recurse) {
    // return all-map elements which are visible and are a direct child of
@@ -416,7 +418,8 @@ public static ListElement[] getFolderElements (LayeredList list,
 }
 
 /** Returns all elements of <code>list</code> which are visible and a direct 
- * child of the element defined by parameter <code>hierarchy</code>.
+ * child of the element defined by parameter <code>hierarchy</code>. An
+ * empty array is returned if there are no such children defined.
 * 
 * @param list LayeredList
 * @param hierarchy String
@@ -472,7 +475,7 @@ public boolean isPrintHierarchy () {
 }
 
 /** Sets whether the default cell renderer should print the HIERARCHY value
- * of an element is display. Function useful for testing.
+ * of an element in display. Function useful for testing.
  * 
  * @param printHierarchy boolean true == print HIERARCHY value
  */
@@ -536,10 +539,25 @@ public static class ListElement implements Comparable<ListElement> {
       return parent;
    }
 
+   /** Sets the class member value; does not change the hierarchy value or
+    * the sorting position.
+    *  
+    * @param parent ListElement
+    */
    private void setParent (ListElement parent) {
       this.parent = parent;
    }
 
+   /** Returns all visible direct children of this list element. An empty array
+    * is returned if there are no such children.
+    * 
+    * @return {@code ListElement[]} or null if layered list property is null
+    */
+   public ListElement[] getChildren () {
+	   ListElement[] arr = getFolderElements(list, hierarchy);
+	   return arr;
+   }
+   
    /** Returns the HIERARCHY value of this element. This is non-null and
     * valid.
     * 
@@ -607,7 +625,7 @@ public static class ListElement implements Comparable<ListElement> {
    
    /** Sets the VISIBILITY property for this element.
     * An INVISIBLE element (VISIBLE == false) is never shown in the list
-    * but remains member of the list repository.
+    * but remains a member of the list repository.
     * 
     * @param visible boolean true == VISIBLE, false == INVISIBLE
     */

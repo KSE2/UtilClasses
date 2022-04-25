@@ -118,6 +118,8 @@ public class GUIService {
 	}
 
 	/** Displays an error message dialog referring to the parameter exception.
+	 * <p>Waits until the message is confirmed or the calling thread is 
+	 * interrupted. 
 	 * 
 	 * @param owner Component owner of the message dialog
 	 * @param text the message token or plain text; if <b>null</b> a standard 
@@ -137,6 +139,8 @@ public class GUIService {
 	}
 
 	/** Displays an error message dialog referring to the parameter exception.
+	 * <p>Waits until the message is confirmed or the calling thread is 
+	 * interrupted. 
 	 * 
 	 * @param text the message token or plain text; if <b>null</b> a standard 
 	 *        message is used
@@ -149,12 +153,16 @@ public class GUIService {
 
 	/** Displays an information message without parent component. It will get 
 	 *  centred within the application's mainframe.
+	 * <p>Waits until the message is confirmed or the calling thread is 
+	 * interrupted. 
 	 */
 	public static void infoMessage (String title, String text) {
 	   infoMessage( null, title, text );
 	}
 
 	/** Displays a warning message centred within the given parent component.
+	 * <p>Waits until the message is confirmed or the calling thread is 
+	 * interrupted. 
 	 * 
 	 * @param owner {@code Component} parent component; if null the mainframe
 	 * 				window is used
@@ -169,12 +177,20 @@ public class GUIService {
 
 	/** Displays a warning message without parent component. It will get 
 	 *  centred within the application's mainframe.
+	 * <p>Waits until the message is confirmed or the calling thread is 
+	 * interrupted. 
+	 *
+	 * @param title String title of dialog; null for a standard title 
+	 * @param text String message text
+	 * @return DialogTerminationType 
 	 */
 	public static DialogTerminationType warningMessage (String title, String text) {
 	   return warningMessage( null, title, text );
 	}
 
 	/** Displays an information message centred within the given parent component.
+	 * <p>Waits until the message is confirmed or the calling thread is 
+	 * interrupted. 
 	 * 
 	 * @param owner {@code Component} parent component; if null the mainframe
 	 * 				window is used

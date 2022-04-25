@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.io.StringWriter;
 import java.util.ArrayList;
 import java.util.Hashtable;
 import java.util.List;
@@ -102,7 +103,7 @@ public class IOService {
 	}
 
 	/**
-	 * Marshal objects into xml files.
+	 * Marshal an object into an output stream.
 	 *
 	 * <p>The xml file structure is created from the object's structure. This is
 	 * done by annotating the object's class with the usual JAXB annotations.
@@ -120,6 +121,31 @@ public class IOService {
 
 		try {
 			marshaller.marshal(object, out);
+		} catch (JAXBException e) {
+			throw new JaxBFailureException("error in marshal object", e);
+		}
+	}
+
+	/**
+	 * Returns the marshalling of an object as a String text.
+	 *
+	 * <p>The xml file structure is created from the object's structure. This is
+	 * done by annotating the object's class with the usual JAXB annotations.
+	 * 
+	 * @param object The Object to be marshalled
+	 * @return String containing the XML serialisation
+	 * @throws JAXBException If something goes wrong during marshalling.
+	 * @throws IOException 
+	 */
+	public <T> String marshal (T object) throws IOException {
+		Objects.requireNonNull(object, "no object supplied");
+		if (marshaller == null)
+			throw new IOException("XML-Manager not initialised");
+
+		try {
+			StringWriter writer = new StringWriter(128);
+			marshaller.marshal(object, writer);
+			return writer.toString();
 		} catch (JAXBException e) {
 			throw new JaxBFailureException("error in marshal object", e);
 		}
