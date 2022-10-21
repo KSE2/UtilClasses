@@ -22,14 +22,22 @@ import java.io.StreamCorruptedException;
 import java.io.UnsupportedEncodingException;
 import java.io.Writer;
 import java.nio.BufferUnderflowException;
+import java.nio.ByteBuffer;
 import java.nio.CharBuffer;
+import java.nio.channels.FileChannel;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.BitSet;
 import java.util.Comparator;
 import java.util.Date;
 import java.util.Enumeration;
 import java.util.GregorianCalendar;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Objects;
+import java.util.Properties;
 import java.util.Random;
 import java.util.Set;
 import java.util.TimeZone;
@@ -47,6 +55,9 @@ public class Util {
 	public static final long TM_HOUR = 60 * 60 * 1000;
 	public static final long TM_MINUTE = 60 * 1000;
 	public static final long TM_SECOND= 1000;
+	/** A String array of size zero. */
+	public static final String[] EMPTY_STRING_ARRAY = new String[0];
+	public static final long GIGA = 1000000000;
 	
 	private static Random random = new Random();
 
@@ -61,6 +72,7 @@ public class Util {
 		T t = null;
 		for (T o : set) {
 			if (t != null) {
+				@SuppressWarnings("unchecked")
 				int c = comp == null ? ((Comparable<T>)o).compareTo(t) : comp.compare(o, t);
 				if (c < 0) {
 					return false;
@@ -143,20 +155,55 @@ public class Util {
 		return v;
 	}
 	
+	/** Throws an IllegalArgumentException if the integer argument is
+	 * negative.
+	 * 
+	 * @param i int integer to test
+	 * @throws IllegalArgumentException
+	 */
 	public static void requirePositive (int i) {
 		if (i < 0)
-			throw new IllegalArgumentException("argument is negative");
+			throw new IllegalArgumentException("int argument is negative: " + i);
 	}
 	
+	/** Throws an IllegalArgumentException if the integer argument is
+	 * negative.
+	 * 
+	 * @param i long integer to test
+	 * @throws IllegalArgumentException
+	 */
 	public static void requirePositive (long i) {
 		if (i < 0)
-			throw new IllegalArgumentException("argument is negative");
+			throw new IllegalArgumentException("long argument is negative: " + i);
 	}
 	
+	/** Throws an IllegalArgumentException if the integer argument is
+	 * negative.
+	 * 
+	 * @param i int integer to test
+	 * @param argument String name of the integer variable 
+	 *        (element of exception message)
+	 * @throws IllegalArgumentException
+	 */
 	public static void requirePositive (int i, String argument) {
 		if (i < 0) {
 			String arg = argument == null ? "argument" : argument;
-			throw new IllegalArgumentException(arg.concat(" is negative"));
+			throw new IllegalArgumentException(arg + " is negative: " + i);
+		}
+	}
+
+	/** Throws an IllegalArgumentException if the integer argument is
+	 * negative.
+	 * 
+	 * @param i long integer to test
+	 * @param argument String name of the integer variable 
+	 *        (element of exception message)
+	 * @throws IllegalArgumentException
+	 */
+	public static void requirePositive (long i, String argument) {
+		if (i < 0) {
+			String arg = argument == null ? "argument" : argument;
+			throw new IllegalArgumentException(arg + " is negative: " + i);
 		}
 	}
 
@@ -661,19 +708,23 @@ public class Util {
 	 * @param input the input stream (non-null)
 	 * @param output the output stream (non-null)
 	 * @param buffer transfer buffer
+	 * @return long number of bytes transferred
 	 * @throws java.io.IOException
 	 * @throws InterruptedException if the calling thread was interrupted
 	 */
-	public static void transferData (InputStream input, OutputStream output,
+	public static long transferData (InputStream input, OutputStream output,
 	      byte[] buffer) throws java.io.IOException, InterruptedException {
 	   Objects.requireNonNull(buffer, "transfer buffer is null");
+	   long sum = 0;
 	   int len;
 	   while ((len = input.read(buffer)) > -1) {
        	  if (Thread.interrupted()) {
      		 throw new InterruptedException();
        	  }
 	      output.write(buffer, 0, len);
+	      sum += len;
 	   }
+	   return sum;
 	}
 
 	/**
@@ -685,13 +736,14 @@ public class Util {
 	 * @param input the input stream (non-null)
 	 * @param output the output stream (non-null)
 	 * @param bufferSize the size of the transfer buffer
+	 * @return long number of bytes transferred
 	 * @throws java.io.IOException
 	 * @throws InterruptedException if the calling thread was interrupted
 	 */
-	public static void transferData (InputStream input, OutputStream output,
+	public static long transferData (InputStream input, OutputStream output,
 	      int bufferSize) throws java.io.IOException, InterruptedException {
 	   byte[] buffer = new byte[bufferSize];
-	   transferData(input, output, buffer);
+	   return transferData(input, output, buffer);
 	}
 
 	/** Makes every attempt to remove all files in the given directory, 
@@ -775,7 +827,8 @@ public class Util {
 	   /** A security file copy method. 
 	    * Copies the contents of any disk file to a specified output file.  If 
 	    * the output file is a relative path, it is made absolute against the 
-	    * directory of the input file.  The output file will be overwritten if
+	    * directory of the input file. The parent path of the output file is
+	    * created if it does not exist. The output file will be overwritten if
 	    * it exist. Function reports errors to <code>System.err</code>.
 	    * The time mark of the resulting file is the operation time.
 	    * Operation stops unfinished when interrupted state of the current thread
@@ -791,9 +844,9 @@ public class Util {
 	    *  
 	    * @param source File source File object
 	    * @param target File target File object
+	    * @throws StreamCorruptedException if CRC check failed on the copy
 	    * @throws IOException if the function could not be completed
-	    *         because of an IO or CRC-check error or if the thread was 
-	    *         interrupted
+	    *         because of an IO error
 	    * @throws InterruptedException if the calling thread was interrupted 
 	    *         while copying was unfinished
 	    */
@@ -805,7 +858,8 @@ public class Util {
 	   /** A security file copy method. 
 	    * Copies the contents of any disk file to a specified output file.  If 
 	    * the output file is a relative path, it is made absolute against the 
-	    * directory of the input file.  The output file will be overwritten if
+	    * directory of the input file. The parent path of the output file is
+	    * created if it does not exist. The output file will be overwritten if
 	    * it exist. Function reports errors to <code>System.err</code>.
 	    * The time mark of the resulting file can optionally be the operation 
 	    * time or the original file's time.
@@ -824,9 +878,9 @@ public class Util {
 	    * @param target File target File object
 	    * @param carryTime boolean if true the "last modified" time is set to 
 	    *        source value otherwise assumes operation time
+	    * @throws StreamCorruptedException if CRC check failed on the copy
 	    * @throws IOException if the function could not be completed
-	    *         because of an IO or CRC-check error or if the thread was 
-	    *         interrupted
+	    *         because of an IO error
 	    * @throws InterruptedException if the calling thread was interrupted 
 	    *         while copying was unfinished
 	    */
@@ -880,7 +934,7 @@ public class Util {
 	         }
 	         in.close();
 	         if (writeCrc != (int)crcSum.getValue()) {
-	            throw new StreamCorruptedException("bad copy CRC");
+	            throw new StreamCorruptedException("bad copy CRC on " + target);
 	         }
 
 			 // create the target file (rename completed copy)
@@ -902,6 +956,70 @@ public class Util {
 	      }
 	   } // copyFile
 
+	   /** A security file copy method. 
+	    * Copies the contents of any disk file to a specified output file.  If 
+	    * the output file is a relative path, it is made absolute against the 
+	    * directory of the input file. The parent path of the output file is
+	    * created if it does not exist. The output file will be overwritten if
+	    * it exist. Function reports errors to <code>System.err</code>.
+	    * The time mark of the resulting file can optionally be the operation 
+	    * time or the original file's time.
+	    * Operation stops with an IOException when interrupted state of the 
+	    * current thread is detected. The interrupted state is cleared, the
+	    * IOException contains the cascaded information of InterruptedException.
+	    * <p>A CRC32 check is performed to compare source and copy after the 
+	    * transfer process and if results negative a 
+	    * {@code StreamCorruptedException} is thrown.
+	    * <p>What is more, an intermediate temporary file is created into which
+	    * the source is copied before it is renamed to the target. This ensures
+	    * only completed and tested data transfers will be shown by the target
+	    * file name. 
+	    *  
+	    * @param source File source File object
+	    * @param target File target File object
+	    * @param carryTime boolean if true the "last modified" time is set to 
+	    *        source value otherwise assumes operation time
+	    * @throws StreamCorruptedException if CRC check failed on the copy
+	    * @throws IOException if the function could not be completed
+	    *         because of an IO error
+	    */
+	   public static void copyFile2 (File source, File target, boolean carryTime)
+                                   throws java.io.IOException {
+		   try {
+			   copyFile(source, target, carryTime);
+		   } catch (InterruptedException e) {
+			   throw new IOException("interrupted while copying to " + target, e);
+		   }
+	   }
+	   
+	   /** A security file copy method. 
+	    * Copies the contents of any disk file to a specified output file.  If 
+	    * the output file is a relative path, it is made absolute against the 
+	    * directory of the input file. The parent path of the output file is
+	    * created if it does not exist. The output file will be overwritten if
+	    * it exist. Function reports errors to <code>System.err</code>.
+	    * The time mark of the resulting file is the operation time.
+	    * Operation stops with an IOException when interrupted state of the 
+	    * current thread is detected. The interrupted state is cleared, the
+	    * IOException contains the cascaded information of InterruptedException.
+	    * <p>A CRC32 check is performed to compare source and copy after the 
+	    * transfer process and if results negative a 
+	    * {@code StreamCorruptedException} is thrown.
+	    * <p>What is more, an intermediate temporary file is created into which
+	    * the source is copied before it is renamed to the target. This ensures
+	    * only completed and tested data transfers will be shown by the target
+	    * file name. 
+	    *  
+	    * @param source File source File object
+	    * @param target File target File object
+	    * @throws StreamCorruptedException if CRC check failed on the copy
+	    * @throws IOException if the function could not be completed
+	    *         because of an IO error
+	    */
+	   public static void copyFile2 (File source, File target) throws java.io.IOException {
+		   copyFile2(source, target, false);
+	   }
+	   
 	/**
 	 * Transfers the contents of the input stream to the output stream
 	 * until the end of input stream is reached, using the given data buffer. 
@@ -1038,11 +1156,11 @@ public class Util {
 		return buffer;
 	}
 	   
-	/** Reads the contents of the given file and returns them as a byte array.
+	/** Reads the contents of the given file and returns them as a text string.
 	 * 
 	 * @param file File file to read
 	 * @param encoding String the text encoding; null for JVM default
-	 * @return String text or null if argument is null
+	 * @return String content text or null if file is null
 	 * @throws IOException
 	 * @throws UnsupportedEncodingException
 	 */
@@ -1055,6 +1173,50 @@ public class Util {
 		byte[] buf = readFile(file);
 		String text = new String(buf, encoding);
 		return text;
+	}
+	
+	/** Writes the given byte array to the given file in overwrite modus.
+	 * 
+	 * @param f File output file
+	 * @param data byte[] data to write; may be null
+	 * @throws IOException
+	 */
+	public static void writeFile (File f, byte[] data) throws IOException {
+		Objects.requireNonNull(f, "file is null");
+		FileOutputStream out = new FileOutputStream(f);
+
+		try {
+			if (data != null) {
+				out.write(data);
+			}
+		} finally {
+			out.close();
+		}
+	}
+	
+	/** Writes a given String text to a given file using the given character
+	 * encoding. An existing file will be overwritten.
+	 *  
+	 * @param f File output file
+	 * @param text String text to write; may be null
+	 * @param encoding String character encoding or null for default encoding
+	 * @throws IOException
+	 */
+	public static void writeTextFile (File f, String text, String encoding) throws IOException {
+		Objects.requireNonNull(f, "file is null");
+		if (encoding == null) {
+			encoding = System.getProperty("file.encoding", "UTF-8");
+		}
+		FileOutputStream out = new FileOutputStream(f);
+		OutputStreamWriter writer = new OutputStreamWriter(out, encoding);
+
+		try {
+			if (text != null) {
+				writer.write(text);
+			}
+		} finally {
+			writer.close();
+		}
 	}
 	
 	/** Attempts to read an integer value from the current position of the given
@@ -1287,7 +1449,8 @@ public class Util {
 	}
 
 	/** Returns a {@code BufferedWriter} object created to write to the given
-	 * output file. 
+	 * output file in the default character encoding. An existing file is
+	 * overwritten.
 	 * <p>NOTE: This method creates an open output stream for the given file,
 	 * the resulting writer should be closed after use in order to release
 	 * the file resource.
@@ -1641,5 +1804,325 @@ public class Util {
 		}
 		return sbuf.toString();
 	}
+	
+	/** Returns the CRC32 of the given properties set of entries as a 32-bit
+	 *  int value.
+	 * 
+	 * @param properties {@code Properties}
+	 * @return int CRC32 value
+	 */
+	public static int getPropertiesCrc (Properties properties) {
+		final CRC_32 crc = new CRC_32();
+		Object[] arr = properties.keySet().toArray();
+		Arrays.sort(arr);
+		
+		for (Object o : arr) {
+			Object value = properties.getProperty((String)o);
+			crc.updateString((String)value);
+		}
+		return (int) crc.getValue();
+	}
+
+	/** Returns a list of Strings which were gained by splitting the given
+	 * text around the given regular expression (delimiting sequence).
+	 * Elements are trimmed and empty elements are omitted (not contained in 
+	 * the resulting list). If the argument is null an empty list is returned.
+	 * 
+	 * @param s String input text; may be null
+	 * @param expr String regular expression (delimiting char sequence)
+	 * @return {@code List<String>}
+	 */
+	public static List<String> separatedNames (String s, String expr) {
+		Objects.requireNonNull(expr, "expression is null");
+		List<String> list = new ArrayList<>();
+		if (s != null && !s.isEmpty()) {
+			String[] arr = s.split(expr);
+			for (String hs : arr) {
+				hs = hs.trim();
+				if (!hs.isEmpty()) {
+					list.add(hs);
+				}
+			}
+		}
+		return list;
+	}
+
+	/** Returns the concatenation of all strings contained in the given 
+	 * array in the natural sequence of indices. If the delimiter value is 
+	 * defined it is inserted between consecutive elements. Null values are 
+	 * ignored, empty strings are valid elements. No trimming is performed on 
+	 * the elements or the result.
+	 * 
+	 * @param str String[]
+	 * @param delimiter String delimiter token; may be null
+	 * @return String
+	 */
+	public static String mergeStrings(String[] str, String delimiter) {
+		StringBuffer sbuf = new StringBuffer();
+		for (String s : str) {
+			if (s == null) continue;
+			if (delimiter != null && sbuf.length() > 0) {
+				sbuf.append(delimiter);
+			}
+			sbuf.append(s);
+		}
+		return sbuf.toString();
+	}
+
+
+	/** Returns the MD5-value of the given file. The value is a newly
+	 * created by reading the given file.
+	 * 
+	 * @param f File
+	 * @return byte[] 16-byte MD5 value
+	 * @throws IOException 
+	 * @throws IllegalStateException if MD5 should not be available
+	 */
+	public static byte[] getMD5Val (File f) throws IOException {
+		InputStream input = null;
+		try {
+			// open input file
+			input = new FileInputStream(f);
+			
+			// create MessageDigest object for MD5
+			MessageDigest digest = MessageDigest.getInstance("MD5");
+			
+			// read and translate file content
+			byte[] buf = new byte[4*2048];
+			int r;
+			while ((r=input.read(buf)) > -1) {
+				digest.update(buf, 0, r);
+			}
+			
+			// return digest result
+			byte[] res = digest.digest();
+			return res;
+
+		} catch (NoSuchAlgorithmException e) {
+			throw new IllegalStateException("MD5 class not found", e);
+			
+		} finally {
+			if (input != null) {
+				input.close();
+			}
+		}
+	}
+
+	/** Whether the given object (2nd parameter) is contained in the given
+	 * array (1st parameter).
+	 * 
+	 * @param arr Object[]
+	 * @param obj Object
+	 * @return boolean true == obj is contained in arr, false obj is not 
+	 * contained in arr
+	 */
+	public static boolean arrayContains (Object[] arr, Object obj) {
+		Objects.requireNonNull(arr, "array is null");
+		Objects.requireNonNull(obj, "object is null");
+		for (Object o : arr) {
+			if (o.equals(obj)) return true;
+		}
+		return false;
+	}
+
+	/** Whether the given directory 'd1' is an ancestor directory to
+	 * the given directory 'd2'.
+	 * 
+	 * @param d1 File directory 
+	 * @param d2 File directory 
+	 * @return boolean true = d1 is ancestor of d2, false = d1 is not an
+	 *         ancestor of d2
+	 */
+	public static boolean isAncestor (File d1, File d2) {
+		Objects.requireNonNull(d1, "argument 'ancestor' is null");
+		Objects.requireNonNull(d2, "argument 'ofDir' is null");
+		File parent = d2;
+		while ((parent = parent.getParentFile()) != null) {
+			if (d1.equals(parent)) return true;
+		}
+		return false;
+	}
+
+	/** Fills a specified section of the parameter file with a given pattern 
+	 * value.
+	 *
+	 * @param f <code>RandomAccessFile</code>
+	 * @param off long start offset in file of destined write section; 
+	 *        if below 0 the function works from the current file pointer 
+	 *        position 
+	 * @param length long length of write section; if below 0 the method does 
+	 *        nothing
+	 * @param pattern byte[] containing a pattern which is applied iteratively
+	 * @param cyclus int length of a pattern cycle; if greater 0 then 
+	 *        must obey {@code length % cyclus == 0} 
+	 * @throws IOException
+	 * @throws IllegalArgumentException if there is a mismatch in parameters
+	 */   
+	public static final void fillFileSpace ( RandomAccessFile f, 
+	                                         long off, 
+	                                         long length,
+	                                         byte[] pattern,
+	                                         int cyclus )	throws IOException	{
+	   if ( length >= 0 ) {
+	      if ( cyclus > 0 ) {
+	         if ( length % cyclus > 0 )
+	            throw new IllegalArgumentException( "length / cyclus mismatch" );
+	         if ( pattern.length % cyclus > 0 )
+	            throw new IllegalArgumentException( "pattern / cyclus mismatch" );
+	      }
+	
+	      if ( off >= 0 ) {
+	         f.seek( off );
+	      }
+	
+	      while ( length > 0 ) {
+	         int len = (int)Math.min( length, pattern.length );
+	         f.write( pattern, 0, len );
+	         length -= len;
+	      }
+	   }
+	}  // fillFileSpace
+	
+	/** Fills a specified section of the given file-channel with a given pattern 
+	 * value. The channel's position is involved and modified.
+	 *
+	 * @param f <code>FileChannel</code>
+	 * @param off long start offset in file of destined write section; 
+	 *        if below 0 the function works from the current file pointer 
+	 *        position 
+	 * @param length long length of write section; if below 0 the method does 
+	 *        nothing
+	 * @param pattern byte[] containing a pattern which is applied iteratively
+	 * @param cyclus int length of a pattern cycle; if greater 0 then 
+	 *        must obey {@code length % cyclus == 0} 
+	 * @throws IOException
+	 * @throws IllegalArgumentException if there is a mismatch in parameters
+	 */   
+	public static final void fillFileSpace ( FileChannel f, 
+	                                         long off, 
+	                                         long length,
+	                                         byte[] pattern,
+	                                         int cyclus )	throws IOException	{
+	   if ( length >= 0 ) {
+	      if ( cyclus > 0 ) {
+	         if ( length % cyclus > 0 )
+	            throw new IllegalArgumentException( "length / cyclus mismatch" );
+	         if ( pattern.length % cyclus > 0 )
+	            throw new IllegalArgumentException( "pattern / cyclus mismatch" );
+	      }
+	
+	      if ( off >= 0 ) {
+	         f.position( off );
+	      }
+	
+	      ByteBuffer bbuf = ByteBuffer.wrap(pattern, 0, pattern.length);
+	      while ( length > 0 ) {
+	         int len = (int)Math.min( length, pattern.length );
+	         bbuf.position(0);
+	         bbuf.limit(len);
+	         int wlen = f.write( bbuf );
+	         if (wlen != len) {
+	        	 throw new IOException("(Util.fillFileSpace) incomplete pattern writing, FileChannel");
+	         }
+	         length -= len;
+	      }
+	   }
+	}  // fillFileSpace
+
+	/** Returns a new byte array which is the concatenation of the given arrays 
+	 * a1 and a2. The length of the result is a1.length + a2.length.
+	 * 
+	 * @param a1 byte[]
+	 * @param a2 byte[]
+	 * @return byte[]
+	 */
+	public static byte[] concatArrays (byte[] a1, byte[] a2) {
+		byte[] buf = new byte[a1.length + a2.length];
+		System.arraycopy(a1, 0, buf, 0, a1.length);
+		System.arraycopy(a2, 0, buf, a1.length, a2.length);
+		return buf;
+	}
+
+	/** Returns the user home directory. This refers to the system properties.
+	 * 
+	 * @return File
+	 */
+	public static File getUserHomeDir () {
+		String hs = System.getProperty("user.home");
+		if (hs == null) {
+			throw new IllegalStateException("JVM failure: no user home defined");
+		}
+		return new File(hs);
+	}
+	
+	/** Returns the current user directory. This refers to the system properties.
+	 * 
+	 * @return File
+	 */
+	public static File getUserDir () {
+		String hs = System.getProperty("user.dir");
+		if (hs == null) {
+			throw new IllegalStateException("JVM failure: no user home defined");
+		}
+		return new File(hs);
+	}
+
+	/** Decodes a {@code Rectangle} text code. 
+	 * <p>The valid code may contain 0, 2 or 4 elements separated by ',' char.
+	 * The 2-element version contains width and height (dimension and zero 
+	 * location); the 4-element version contains x, y, width, height (location
+	 * and dimension).
+	 * 
+	 * @param code String
+	 * @return Rectangle
+	 * @throws IllegalArgumentException if argument has illegal encoding
+	 */
+	public static Rectangle decodeBounds (String code) {
+		Objects.requireNonNull(code);
+		String[] sa = code.split(",");
+		int x = 0, y = 0, w = 0, h = 0, i = 0; 
+		switch (sa.length) {
+		case 4: x = Integer.parseInt(sa[i++]);
+				y = Integer.parseInt(sa[i++]);
+		case 2: w = Integer.parseInt(sa[i++]);
+				h = Integer.parseInt(sa[i]);
+		case 0:	break;
+		default: throw new IllegalArgumentException("illegal Bounds code"); 
+		}
+		return new Rectangle(x, y, w, h);
+	}
+
+	/** Decodes a {@code Dimension} text code. 
+	 * <p>The valid code may contain 0 to 2 elements separated by ',' char,
+	 * where the first element is width, the second is height.
+	 * 
+	 * @param code String
+	 * @return Dimension
+	 * @throws IllegalArgumentException if false encoding
+	 */
+	public static Dimension decodeDimension (String code) {
+		String[] sa = code.split(",");
+		int x = 0, y = 0;
+		switch (sa.length) {
+		case 2: y = Integer.parseInt(sa[1]);
+		case 1:	x = Integer.parseInt(sa[0]);
+		case 0:	break;
+		default: throw new IllegalArgumentException("incorrect Dimension code"); 
+		}
+		return new Dimension(x, y);
+	}
+
+	public static String encodeBounds (Rectangle r) {
+		return r.x + "," + r.y + "," + r.width + "," + r.height;
+	}
+
+	public static String encodeDimension (Dimension size) {
+		return size.width + "," + size.height;
+	}
+
+	public static String encodeDimension (Point point) {
+		return point.x + "," + point.y;
+	}
+	
 }
 

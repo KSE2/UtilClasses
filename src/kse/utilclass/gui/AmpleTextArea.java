@@ -771,7 +771,7 @@ public class AmpleTextArea extends JTextArea
 	   int length;
 	   if ( executor == null ) {
 		   hstr = getIntl("msg.fail.noexecutor");
-		   GUIService.failureMessage(hstr, null);
+		   GUIService.failureMessage(hstr);
 		   return;
 	   }
 	   

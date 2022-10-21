@@ -2,9 +2,9 @@
 
 <!--   NAMES                                           -->
 	<property name="doc-project-name" value="KSE UtilClasses" />
-	<property name="ver" value="0-6-0" />
+	<property name="ver" value="0-7-0" />
 	<property name="year" value="2022" />
-	<property name="release date" value="02.03.2022" />
+	<property name="release date" value="20.10.2022" />
 	<property name="encoding" value="UTF-8" />
 	<property name="pkg-basename" value="kse.utilclass" />
 	<property name="pkg-fbasename" value="kse/utilclass" />

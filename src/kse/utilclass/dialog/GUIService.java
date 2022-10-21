@@ -7,9 +7,11 @@ import java.awt.Image;
 import java.awt.Window;
 import java.lang.reflect.InvocationTargetException;
 
+import javax.swing.Box;
 import javax.swing.ImageIcon;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
+import javax.swing.JTextField;
 import javax.swing.SwingUtilities;
 
 import kse.utilclass.dialog.MessageDialog.MessageType;
@@ -31,6 +33,16 @@ public class GUIService {
 	
 	public static Window getMainFrame () {return mainFrame;}
 	
+	/** Sets whether INFO and QUESTION type messages receive a standard 
+	 * background coloured panel. By default the panels are coloured. If this
+	 * option is turned off, the panels paint non-opaque (left to UI-Manager).
+	 * 
+	 * @param b boolean true = panel coloured, false = panel not coloured
+	 */
+	public static void setInfosColored (boolean b) {
+		MessageDialog.setInfosColored(b);
+	}
+
 	/** Asks the user (dialog) to confirm a given question with "Yes" or "No".
 	 * 
 	 * @param owner the parent component for the dialog; if <b>null</b> the current
@@ -121,18 +133,21 @@ public class GUIService {
 	 * <p>Waits until the message is confirmed or the calling thread is 
 	 * interrupted. 
 	 * 
-	 * @param owner Component owner of the message dialog
-	 * @param text the message token or plain text; if <b>null</b> a standard 
-	 *        message is used
-	 * @param e if not <b>null</b> this exception is reported in the message text 
-	 *        
+	 * @param owner Component owner of the message dialog; if null the default
+	 *        frame is used
+	 * @param title String dialog title; if <b>null</b> a standard
+	 * @param text String message text; if <b>null</b> a standard 
+	 * @param e {@code Throwable} if not <b>null</b> this exception is reported 
+	 *        in the dialog 
 	 */ 
-	public static void failureMessage (Component owner, String text, Throwable e) {
+	public static void failureMessage (Component owner, String title, String text, Throwable e) {
+	   if (title == null) {
+		   title = "Operation Failure";
+	   }
 	   if ( text == null ) {
-	      text = "something bad happened:";
+	      text = "Something bad happened:";
 	   }
 	   
-	   String title = "Operation Failure";
 	   String hstr = "<html><b>".concat(text); 
 	   hstr = getExceptionMessage(hstr, e);
 	   MessageDialog.showInfoMessage(owner, title, hstr, MessageType.error);
@@ -142,13 +157,64 @@ public class GUIService {
 	 * <p>Waits until the message is confirmed or the calling thread is 
 	 * interrupted. 
 	 * 
-	 * @param text the message token or plain text; if <b>null</b> a standard 
-	 *        message is used
-	 * @param e if not <b>null</b> this exception is reported in the message text 
-	 *        
+	 * @param owner Component owner of the message dialog; if null the default
+	 *        frame is used
+	 * @param title String dialog title; if <b>null</b> a standard
+	 * @param text String message text; if <b>null</b> a standard 
+	 * @param e {@code Throwable} if not <b>null</b> this exception is reported 
+	 *        in the dialog 
+	 */ 
+	public static void failureMessage (Component owner, String title, String text) {
+		failureMessage(owner, title, text, null);
+	}
+	
+	/** Displays an error message dialog with the given text and additionally
+	 * referring to the parameter exception.
+	 * <p>Waits until the message is confirmed or the calling thread is 
+	 * interrupted. 
+	 * 
+	 * @param owner Component owner of the message dialog; if null the default
+	 *        frame is used
+	 * @param text String message text; if <b>null</b> a standard 
+	 * @param e {@code Throwable} if not <b>null</b> this exception is reported
+	 *        in the dialog 
+	 */ 
+	public static void failureMessage (Component owner, String text, Throwable e) {
+		failureMessage(owner, null, text, e);
+	}
+	
+	/** Displays an error message dialog with the given text and additionally
+	 * referring to the parameter exception.
+	 * <p>Waits until the message is confirmed or the calling thread is 
+	 * interrupted. 
+	 * 
+	 * @param text String message text; if <b>null</b> a standard 
+	 * @param e {@code Throwable} if not <b>null</b> this exception is reported
+	 *        in the dialog 
 	 */ 
 	public static void failureMessage (String text, Throwable e) {
 	   failureMessage(mainFrame, text, e);
+	}
+
+	/** Displays an error message dialog with the given text message and dialog
+	 * title. <p>Waits until the message is confirmed or the calling thread is 
+	 * interrupted. 
+	 * 
+	 * @param title String dialog title; if <b>null</b> a standard
+	 * @param text String message text; if <b>null</b> a standard 
+	 */ 
+	public static void failureMessage (String title, String text) {
+	   failureMessage(mainFrame, title, text, null);
+	}
+
+	/** Displays an error message dialog with the given text message and a
+	 * default dialog title. <p>Waits until the message is confirmed or the 
+	 * calling thread is interrupted. 
+	 * 
+	 * @param text String message text; if <b>null</b> a standard 
+	 */ 
+	public static void failureMessage (String text) {
+	   failureMessage(mainFrame, null, text, null);
 	}
 
 	/** Displays an information message without parent component. It will get 
@@ -172,11 +238,10 @@ public class GUIService {
 	 */
 	public static DialogTerminationType warningMessage (Component owner, String title, String text) {
 	   return MessageDialog.showMessage(owner, title, text, MessageType.warning, ButtonBarModus.OK_BREAK);
-//	   MessageDialog.showInfoMessage(owner, title, text, MessageType.warning);
 	}
 
-	/** Displays a warning message without parent component. It will get 
-	 *  centred within the application's mainframe.
+	/** Displays a warning message with the given title and text, centred within
+	 * the default frame.
 	 * <p>Waits until the message is confirmed or the calling thread is 
 	 * interrupted. 
 	 *
@@ -188,6 +253,14 @@ public class GUIService {
 	   return warningMessage( null, title, text );
 	}
 
+	public static DialogTerminationType warningMessage(Component owner, String text, Throwable e) {
+		return warningMessage(owner, null, getExceptionMessage(text, e));
+	}
+	
+	public static void warningMessage(String text, Throwable e) {
+		warningMessage(null, text, e);
+	}
+	
 	/** Displays an information message centred within the given parent component.
 	 * <p>Waits until the message is confirmed or the calling thread is 
 	 * interrupted. 
@@ -214,10 +287,11 @@ public class GUIService {
 	private static String getExceptionMessage (String text, Throwable e) {
 	   String msg = text;
 	   
-	   if (e != null) {
+	   while (e != null) {
 	      msg = e.getMessage(); 
-	      msg = (text == null ? "" : text) + "<p>" + e.getClass().getName() + 
-	    		(msg == null ? "" : "<p><font color=red>".concat(msg).concat("</font>"));
+	      msg = (text == null ? "" : text) + "<br>" + e.getClass().getName() + 
+	    		(msg == null ? "" : "<br><font color=#8B0000>".concat(msg).concat("</font>"));
+	      e = e.getCause();
 	   }
 	   return msg;
 	}
@@ -308,5 +382,36 @@ public class GUIService {
 	    dlg.pack();
 	    dlg.setVisible(true);
 	}
-	
+
+	/** Reads a one-line string of a moderate length from GUI user input.
+	 * 'text' is shown in the same line before the input field.
+	 * There are two termination options for the user OK and BREAK.
+	 * 
+	 * @param owner Component parent component of display or null
+	 * @param title String dialog box title or null
+	 * @param text String message shown before before input field 
+	 * @return String input text (can be empty) or null iff terminated
+	 *         other than by OK pressed 
+	 */
+	public static String readName (Component owner, String title, String text) {
+	   // create component to display text and input field
+		JPanel panel = new JPanel();
+		panel.setOpaque(false);
+		panel.add(new JLabel(text));
+		panel.add(Box.createHorizontalStrut(10));
+		JTextField inputFld = new JTextField(20);
+		panel.add(inputFld);
+		
+	   // show message dialog
+	   DialogTerminationType reply =
+	   MessageDialog.showMessage(owner, title == null ? "Input" : title, panel, 
+			   MessageType.question, ButtonBarModus.OK_BREAK);
+
+	   // digest reply type and return input
+	   if (reply == DialogTerminationType.OK_PRESSED) {
+		   return inputFld.getText();
+	   } 
+	   return null;
+	}
+
 }

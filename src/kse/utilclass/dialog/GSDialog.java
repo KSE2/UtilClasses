@@ -1,6 +1,7 @@
 package kse.utilclass.dialog;
 
 import java.awt.BorderLayout;
+import java.awt.Point;
 import java.awt.Window;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
@@ -239,7 +240,7 @@ public class GSDialog extends JDialog {
 	
 	@Override
 	public void setVisible (boolean v) {
-		if (v && !isShowing()) {
+		if (v && !isShowing() && getLocation().equals(new Point())) {
 			setLocationRelativeTo(getOwner());
 		}
 		super.setVisible(v);

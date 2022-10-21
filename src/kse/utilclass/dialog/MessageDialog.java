@@ -50,7 +50,11 @@ public class MessageDialog extends GSDialog {
    public static enum MessageType { noIcon, info, question, warning, error }
    private static final Color WARNING_COLOR = UnixColor.Coral;
    private static final Color ERROR_COLOR = UnixColor.LightCoral;
+   private static final Color QUESTION_COLOR = UnixColor.LemonChiffon;
+   private static final Color INFO_COLOR = UnixColor.PaleGreen;
 
+   private static boolean infosColored = true;
+   
    private MessageContentPanel   dialogPanel;
    
 /**
@@ -98,7 +102,7 @@ public MessageDialog (Window owner,
 		Object text, 
 		MessageType msgType, 
 		ButtonBarModus dlgType, 
-		boolean modal )    throws HeadlessException {
+		boolean modal)    throws HeadlessException {
 	
    super(owner == null ? GUIService.getMainFrame() : owner, dlgType, modal);
    init(msgType);
@@ -125,7 +129,7 @@ public MessageDialog (Window owner, Object text)  throws HeadlessException  {
 private void init (MessageType mType) {
    // body panel (base)
    dialogPanel = new MessageContentPanel() ;
-   dialogPanel.setMessageType( mType );
+   setMessageType( mType );
    setPerformBlock( new MessagePerformBlock() );
 }
 
@@ -134,7 +138,22 @@ private void init (MessageType mType) {
  * @param type <code>MessageType</code> new message type
  */
 public void setMessageType ( MessageType type ) {
+   // switch coloured panels according to user setting
+   if (!infosColored) {
+	   dialogPanel.setInfoBgdColor(null);
+	   dialogPanel.setQuestionBgdColor(null);
+   }
+
    dialogPanel.setMessageType( type );
+}
+
+/** Sets whether INFO and QUESTION type messages receive a background coloured 
+ * panel. By default the panels are coloured.
+ * 
+ * @param b boolean true = panel coloured, false = panel not coloured
+ */
+public static void setInfosColored (boolean b) {
+	infosColored = b; 
 }
 
 /** Returns the <code>MessageType</code> of this dialog.
@@ -179,12 +198,22 @@ public void setIcon (Icon icon) {
  */
 public static MessageContentPanel createMessageContentPanel ( Object text, MessageType type ) {
    MessageContentPanel p = new MessageContentPanel();
+
+   // switch coloured panels according to user setting
+   if (!infosColored) {
+	   p.setInfoBgdColor(null);
+	   p.setQuestionBgdColor(null);
+   }
+
    p.setMessageType( type );
    p.setText( text );
    return p;
 }
 
 public static JLabel createMessageTextLabel (String text) {
+   if (!text.toLowerCase().startsWith("<html>")) {
+	   text = "<html>" + text;
+   }
    JLabel label = new JLabel(text);
    label.setOpaque( false );
    return label;
@@ -202,7 +231,7 @@ public static JLabel createMessageTextLabel (String text) {
  * @param type <code>MessageType</code> appearance quality            
  */
 public static void showInfoMessage (Component parent, String title, 
-		Object text, MessageType type ) {
+		Object text, MessageType type) {
    showMessage(parent, title, text, type, ButtonBarModus.OK);
 }
 
@@ -232,9 +261,9 @@ public static boolean showConfirmMessage ( final Component parent,
  * 
  * @param parent <code>Component</code> the component this message's 
  *               display is related to; may be null
- * @param title <code>String</code> dialog title; may be <b>null</b> or a code           
+ * @param title <code>String</code> dialog title; may be null      
  * @param text <code>Object</code> text to display (<code>Component</code> 
- *             or <code>String</code>)
+ *             or <code>String</code>); may be null
  * @param msgType <code>MessageType</code> appearance quality            
  * @param dlgType {@code ButtonBarModus} dialog type for button setup 
  * @return boolean[] with values indicating what action was taken to terminate
@@ -373,7 +402,7 @@ private class MessagePerformBlock extends DialogPerformBlock {
 
 /**
  * A JPanel for holding message display data and layout
- * consisting of an Icon on the left side and a centered 
+ * consisting of an Icon on the left side and a centred 
  * text block on the right. The text may be represented
  * by either a string or a <code>Component</code>.
  * 
@@ -383,6 +412,8 @@ public static class MessageContentPanel extends JPanel {
    private JPanel   textPanel;
    private JLabel   iconLabel;
    private MessageType messageType = MessageType.noIcon;
+   private Color infoColor = INFO_COLOR;
+   private Color questionColor = QUESTION_COLOR;
 
    /** Creates a new message panel of type <code>noIcon</code>
     * and which is empty of content.
@@ -409,6 +440,22 @@ public static class MessageContentPanel extends JPanel {
       add( iconLabel, BorderLayout.WEST );
    }
 
+   /** Sets the background color of the INFO-type message display.
+    * 
+    * @param c Color; may be null for no color 
+    */
+   public void setInfoBgdColor (Color c) {
+	   infoColor = c;
+   }
+   
+   /** Sets the background color of the QUESTION-type message display.
+    * 
+    * @param c Color; may be null for no color 
+    */
+   public void setQuestionBgdColor (Color c) {
+	   questionColor = c;
+   }
+   
    /** Sets the message display type for this dialog.
     * 
     * @param type <code>MessageType</code> new message type
@@ -421,16 +468,31 @@ public static class MessageContentPanel extends JPanel {
       if ( type == messageType ) return;
       
       // set text background color
-      if ( type == MessageType.warning ) {
+      setOpaque(true);
+      switch (type) { 
+      case warning:
          setBackground( WARNING_COLOR );
-         setOpaque( true );
-      }
-      else if ( type == MessageType.error ) {
+         break;
+      case error:
          setBackground( ERROR_COLOR );
-         setOpaque( true );
+         break;
+      case question:
+    	  if (questionColor != null) {
+    		 setBackground(questionColor);
+    	  } else {
+    	     setOpaque(false);
+    	  }
+          break;
+      case info:
+    	  if (infoColor != null) {
+    		 setBackground(infoColor);
+    	  } else {
+    	     setOpaque(false);
+    	  }
+          break;
+      default:
+         setOpaque(false);
       }
-      else
-         setOpaque( false );
       
       // select icon from message type
       if ( type == MessageType.info )
