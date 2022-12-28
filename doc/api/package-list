@@ -5,3 +5,6 @@ kse.utilclass.lists
 kse.utilclass.misc
 kse.utilclass.models
 kse.utilclass.sets
+kse.utilclass2.gui
+kse.utilclass2.io
+kse.utilclass2.misc

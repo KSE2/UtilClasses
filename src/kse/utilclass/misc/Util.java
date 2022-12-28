@@ -1,5 +1,28 @@
 package kse.utilclass.misc;
 
+/*
+*  File: Util.java
+* 
+*  Project JUtilClasses
+*  @author Wolfgang Keller
+*  Created 
+* 
+*  Copyright (c) 2022 by Wolfgang Keller, Munich, Germany
+* 
+This program is not public domain software but copyright protected to the 
+author(s) stated above. However, you can use, redistribute and/or modify it 
+under the terms of the GNU Library or Lesser General Public License as 
+published by the Free Software Foundation, version 3.0 of the License.
+
+This program is distributed in the hope that it will be useful, but WITHOUT
+ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+
+You should have received a copy of the License along with this program; if not,
+write to the Free Software Foundation, Inc., 59 Temple Place - Suite 330, 
+Boston, MA 02111-1307, USA, or go to http://www.gnu.org/copyleft/gpl.html.
+*/
+
 import java.awt.Dimension;
 import java.awt.Point;
 import java.awt.Rectangle;
@@ -24,7 +47,7 @@ import java.io.Writer;
 import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
 import java.nio.CharBuffer;
-import java.nio.channels.FileChannel;
+import java.nio.channels.SeekableByteChannel;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
@@ -819,9 +842,12 @@ public class Util {
 				throws IOException, InterruptedException {
 	   FileOutputStream out = new FileOutputStream( bottom, true );
 	   FileInputStream in = new FileInputStream( top );
-	   transferData( in, out, 4*2048 );
-	   in.close();
-	   out.close();
+	   try {
+		   transferData( in, out, 4*2048 );
+	   } finally {
+		   in.close();
+		   out.close();
+	   }
 	}
 
 	   /** A security file copy method. 
@@ -1079,10 +1105,13 @@ public class Util {
 	 *  <code>token</code> is replaced by <code>substitute</code>. Replace
 	 *  takes place iteratively until not further occurrence exists.
 	 *  
+	 *  @param text String source text
+	 *  @param token String sequence to be replaced
+	 *  @param substitute String replacement
 	 *  @return String the result of transformation; <b>null</b> if any of the
 	 *          parameters is <b>null</b>
 	 */
-	public static String substituteText ( String text, String token, String substitute ) {
+	public static String substituteText (String text, String token, String substitute) {
 	   int index;
 	
 	   if ( text == null | token == null | substitute == null || 
@@ -1102,10 +1131,13 @@ public class Util {
 	 *  <br>(Returns the original if any of the parameters is <b>null</b> or length or
 	 *  <tt>token</tt> is zero.)
 	 *  
+	 *  @param text String source text
+	 *  @param token String sequence to be replaced
+	 *  @param substitute String replacement
 	 *  @return String the result of substitute; <b>null</b> if any of the
 	 *          parameters is <b>null</b>
 	 */
-	public static String substituteTextS ( String text, String token, String substitute ) {
+	public static String substituteTextS (String text, String token, String substitute) {
 	   int index;
 	
 	   if ( text == null | token == null | substitute == null || 
@@ -1944,7 +1976,7 @@ public class Util {
 	}
 
 	/** Fills a specified section of the parameter file with a given pattern 
-	 * value.
+	 * value. This moves the file-pointer to off + length.
 	 *
 	 * @param f <code>RandomAccessFile</code>
 	 * @param off long start offset in file of destined write section; 
@@ -1983,10 +2015,10 @@ public class Util {
 	   }
 	}  // fillFileSpace
 	
-	/** Fills a specified section of the given file-channel with a given pattern 
-	 * value. The channel's position is involved and modified.
+	/** Fills a specified section of the given byte-channel with a given pattern 
+	 * value. This moves the channel's position to off + length.
 	 *
-	 * @param f <code>FileChannel</code>
+	 * @param c <code>SeekableByteChannel</code>
 	 * @param off long start offset in file of destined write section; 
 	 *        if below 0 the function works from the current file pointer 
 	 *        position 
@@ -1998,21 +2030,21 @@ public class Util {
 	 * @throws IOException
 	 * @throws IllegalArgumentException if there is a mismatch in parameters
 	 */   
-	public static final void fillFileSpace ( FileChannel f, 
+	public static final void fillFileSpace ( SeekableByteChannel c, 
 	                                         long off, 
 	                                         long length,
 	                                         byte[] pattern,
 	                                         int cyclus )	throws IOException	{
-	   if ( length >= 0 ) {
-	      if ( cyclus > 0 ) {
-	         if ( length % cyclus > 0 )
+	   if (length >= 0) {
+	      if (cyclus > 0) {
+	         if (length % cyclus > 0)
 	            throw new IllegalArgumentException( "length / cyclus mismatch" );
-	         if ( pattern.length % cyclus > 0 )
+	         if (pattern.length % cyclus > 0)
 	            throw new IllegalArgumentException( "pattern / cyclus mismatch" );
 	      }
 	
 	      if ( off >= 0 ) {
-	         f.position( off );
+	         c.position( off );
 	      }
 	
 	      ByteBuffer bbuf = ByteBuffer.wrap(pattern, 0, pattern.length);
@@ -2020,7 +2052,7 @@ public class Util {
 	         int len = (int)Math.min( length, pattern.length );
 	         bbuf.position(0);
 	         bbuf.limit(len);
-	         int wlen = f.write( bbuf );
+	         int wlen = c.write(bbuf);
 	         if (wlen != len) {
 	        	 throw new IOException("(Util.fillFileSpace) incomplete pattern writing, FileChannel");
 	         }
@@ -2041,6 +2073,34 @@ public class Util {
 		System.arraycopy(a1, 0, buf, 0, a1.length);
 		System.arraycopy(a2, 0, buf, a1.length, a2.length);
 		return buf;
+	}
+
+	/** Returns a CRC_32 value over the given byte array.
+	 * Returns zero if the argument is null.
+	 * 
+	 * @param data byte[], may be null
+	 * @return CRC_32 (Adler) or 0
+	 */
+	public static int blockCRC (byte[] data) {
+		if (data == null) return 0;
+		CRC_32 crc = new CRC_32();
+		crc.update(data);
+		return (int) crc.getValue();
+	}
+
+	/** Returns a CRC_32 value over the given byte array.
+	 * Returns zero if the argument is null.
+	 * 
+	 * @param data byte[], may be null
+	 * @param start int offset in data
+	 * @param length int length to read
+	 * @return CRC_32 (Adler) or 0
+	 */
+	public static int blockCRC (byte[] data, int start, int length) {
+		if (data == null) return 0;
+		CRC_32 crc = new CRC_32();
+		crc.update(data, start, length);
+		return (int) crc.getValue();
 	}
 
 	/** Returns the user home directory. This refers to the system properties.

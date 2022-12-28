@@ -1,4 +1,27 @@
-package kse.utilclass.gui;
+package kse.utilclass2.gui;
+
+/*
+*  File: TestC_LayeredOptionList_App1.java
+* 
+*  Project JUtilClasses
+*  @author Wolfgang Keller
+*  Created 
+* 
+*  Copyright (c) 2022 by Wolfgang Keller, Munich, Germany
+* 
+This program is not public domain software but copyright protected to the 
+author(s) stated above. However, you can use, redistribute and/or modify it 
+under the terms of the GNU Library or Lesser General Public License as 
+published by the Free Software Foundation, version 3.0 of the License.
+
+This program is distributed in the hope that it will be useful, but WITHOUT
+ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+
+You should have received a copy of the License along with this program; if not,
+write to the Free Software Foundation, Inc., 59 Temple Place - Suite 330, 
+Boston, MA 02111-1307, USA, or go to http://www.gnu.org/copyleft/gpl.html.
+*/
 
 import java.awt.BorderLayout;
 import java.awt.Color;
@@ -13,12 +36,11 @@ import javax.swing.border.Border;
 
 import org.junit.Test;
 
-import kse.utilclass.gui.LayeredOptionList.ListElement;
+import kse.utilclass2.gui.LayeredList.ListElement;
 
+public class TestC_LayeredOptionList_App1 {
 
-public class TestC_LayeredOptionList_App2 {
-
-   static public LayeredOptionList testList;
+   static public LayeredList testList;
    private JPanel primaryPanel;
    
  private JFrame createTestFrame () {
@@ -41,7 +63,7 @@ private Component getListComponent (LayeredList list, Dimension dim) {
 @Test
  public void test_application_1 () {
     JFrame frame = createTestFrame();
-    LayeredOptionList list = getTestList_1();
+    LayeredList list = getTestList_1();
     testList = list;
 
     primaryPanel.add(getListComponent(list, new Dimension(400, 500)), BorderLayout.CENTER);
@@ -50,19 +72,19 @@ private Component getListComponent (LayeredList list, Dimension dim) {
     delay(60000);
  }
 
-private LayeredOptionList getTestList_1 () {
-   LayeredOptionList list = new LayeredOptionList();
+private LayeredList getTestList_1 () {
+   LayeredList list = new LayeredList();
 //   list.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
    Border bo2 = BorderFactory.createMatteBorder(10, 10, 10, 10, Color.cyan);
    Border bo1 = BorderFactory.createEmptyBorder(10, 10, 10, 10);
    list.setBorder(BorderFactory.createCompoundBorder(bo2, bo1));
    list.setPrintHierarchy(true);
-   list.setCheckboxFolders(true);
-   list.setPreciseHit(true);
 //   list.setFolderIcon(null, false);
+//   list.setBackground(Color.lightGray);
+   list.setForeground(Color.green);
 //   list.setEnabled(false);
    
-   ListElement e1, e2, e3, e4, e5, e6, e7, e8, e9, e10;
+   ListElement e1, e2, e3, e4, e5, e6, e7, e8, e9, e10, a1;
    
    e1 = new ListElement("000", null);
    e2 = new ListElement("001", null);
@@ -70,11 +92,11 @@ private LayeredOptionList getTestList_1 () {
    e4 = new ListElement("000003", "Der Wurzelsepp");       
    e5 = new ListElement("005", null);
    e5.setFolding(true);
-   e6 = new ListElement("000001", "Erste Zeile anspitzen", true);
+   e6 = new ListElement("000001", "Erste Zeile anspitzen");
    e7 = new ListElement("000003002", "Nachträge erfassen");
    e8 = new ListElement("002", "Allgemeine Einträge");
    e9 = new ListElement("000003003", "Nachträge verbessern");
-   e10 = new ListElement("005001", "Eine Sultana in Whana", true);
+   e10 = new ListElement("005001", "Eine Sultana in Whana");
    
    // add new visible elements
    list.addListEntry(e1);
@@ -83,15 +105,11 @@ private LayeredOptionList getTestList_1 () {
    list.addListEntry(e4);
    list.addListEntry(e5);
    list.addListEntry(e6);
-//   list.addListEntry(e7);
-//   list.addListEntry(e8);
-//   list.addListEntry(e9);
-//   list.addListEntry(e10);
+   list.addListEntry(e7);
+   list.addListEntry(e8);
+   list.addListEntry(e9);
+   list.addListEntry(e10);
 
-   LayeredOptionList.ListElement[] arr = new LayeredOptionList.ListElement[]
-   { e5, e7, e8, e9, e10 };
-   list.addValues(arr);
-   
    // set ENABLED features
    e3.setEnabled(false);
    e4.setEnabled(false);

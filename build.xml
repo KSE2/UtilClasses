@@ -2,14 +2,17 @@
 
 <!--   NAMES                                           -->
 	<property name="doc-project-name" value="KSE UtilClasses" />
-	<property name="ver" value="0-7-0" />
+	<property name="ver" value="0-8-0" />
 	<property name="year" value="2022" />
-	<property name="release date" value="20.10.2022" />
+	<property name="release date" value="27.12.2022" />
 	<property name="encoding" value="UTF-8" />
-	<property name="pkg-basename" value="kse.utilclass" />
-	<property name="pkg-fbasename" value="kse/utilclass" />
+	<property name="pkg-basename" value="kse" />
+	<property name="pkg-fbasename-1" value="kse/utilclass" />
+	<property name="pkg-fbasename-2" value="kse/utilclass2" />
 	<property name="dist-foldername" value="UtilClasses" />
-	<property name="program-basename" value="util-classes" />
+	<property name="program-basename-1" value="kse-util-cla1" />
+	<property name="program-basename-2" value="kse-util-cla2" />
+	<property name="program-basename" value="kse-utilcla" />
 	
 <!--   DIRECTORIES                                                    -->
 <!--   you may have to adapt these settings to your current installation  -->
@@ -65,19 +68,31 @@ Wolfgang Keller (KSE). All Rights Reserved. Contact service@neolith.chiron.ubers
 </target>
 
 
-<target name="jar" depends="comp" description="create binary package">
+<target name="jar" depends="jar1,jar2" description="create binary packages">
+</target>
+
+<target name="jar1" depends="comp" description="create binary package">
 <!-- remove previous outputs except standard executable -->
-<property name="programname" value="${dist}/${program-basename}-${ver}" />
-<delete file="${programname}.jar"/>
+<property name="pname-1" value="${dist}/${program-basename-1}-${ver}" />
+<delete file="${pname-1}.jar"/>
 
 <!-- create the executable (versioned name) -->
-<jar destfile="${programname}.jar" manifest="MANIFEST.MF" update="false">
-   <fileset dir="${build}" includes="${pkg-fbasename}/**" excludes="**/Test*"/>
+<jar destfile="${pname-1}.jar" manifest="MANIFEST.MF" update="false">
+   <fileset dir="${build}" includes="${pkg-fbasename-1}/**" excludes="**/Test*"/>
 <!--   <zipfileset dir="${resource}" prefix="${pkg-fbasename}/resource" /> -->
 </jar>
+</target>
 
-<!-- make a copy to standard executable name -->
-<!-- <copy file="${programname}.jar" tofile="${dist}/${program-basename}.jar" overwrite="yes"/> -->
+<target name="jar2" depends="comp" description="create binary package">
+<!-- remove previous outputs except standard executable -->
+<property name="pname-2" value="${dist}/${program-basename-2}-${ver}" />
+<delete file="${pname-2}.jar"/>
+
+<!-- create the executable (versioned name) -->
+<jar destfile="${pname-2}.jar" manifest="MANIFEST.MF" update="false">
+   <fileset dir="${build}" includes="${pkg-fbasename-2}/**" excludes="**/Test*"/>
+<!--   <zipfileset dir="${resource}" prefix="${pkg-fbasename}/resource" /> -->
+</jar>
 </target>
 
 
@@ -113,8 +128,11 @@ Wolfgang Keller (KSE). All Rights Reserved. Contact service@neolith.chiron.ubers
     <zipfileset dir="${basedir}" includes="${rootfileset}" prefix="${dist-foldername}" />
     <zipfileset dir="${doc}" includes="${docfileset}" prefix="${dist-foldername}/doc" />
     <zipfileset dir="${apidoc}" prefix="${dist-foldername}/doc/api"/>
+    <zipfileset file="${dist}/${program-basename-1}-${ver}.jar" prefix="${dist-foldername}/bin"/>
+    <zipfileset file="${dist}/${program-basename-2}-${ver}.jar" prefix="${dist-foldername}/bin"/>
 <!--    <zipfileset dir="${resource}" prefix="${dist-foldername}/resource"/> -->
-    <zipfileset dir="${src}/${pkg-fbasename}" prefix="${dist-foldername}/src/${pkg-fbasename}"/>
+    <zipfileset dir="${src}/${pkg-fbasename-1}" prefix="${dist-foldername}/src/${pkg-fbasename-1}"/>
+    <zipfileset dir="${src}/${pkg-fbasename-2}" prefix="${dist-foldername}/src/${pkg-fbasename-2}"/>
 
 <!--    <zipfileset file="${backlib}" prefix="jpws/lib"/>
     <zipfileset file="${backlib-ftp}" prefix="jpws/lib"/>
@@ -125,8 +143,10 @@ Wolfgang Keller (KSE). All Rights Reserved. Contact service@neolith.chiron.ubers
 </zip>
 
 <zip destfile="${filename2}">
-    <zipfileset dir="${src}/${pkg-fbasename}" prefix="${dist-foldername}/src/${pkg-fbasename}"/>
+    <zipfileset dir="${src}/${pkg-fbasename-1}" prefix="${dist-foldername}/src/${pkg-fbasename-1}"/>
+    <zipfileset dir="${src}/${pkg-fbasename-2}" prefix="${dist-foldername}/src/${pkg-fbasename-2}"/>
     <zipfileset dir="${basedir}" includes="build.xml" prefix="${dist-foldername}" />
+    <zipfileset dir="${doc}" includes="${docfileset}" prefix="${dist-foldername}/doc" />
 </zip>
 
 <checksum file="${filename1}"/>

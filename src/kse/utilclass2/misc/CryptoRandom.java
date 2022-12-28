@@ -1,22 +1,27 @@
+package kse.utilclass2.misc;
+
 /*
- *  File: CryptoRandom.java
- * 
- *  Project PWSLIB3
- *  @author Wolfgang Keller
- *  Created 02.09.2005
- * 
- *  Copyright (c) 2005-2015 by Wolfgang Keller, Munich, Germany
- * 
- This program is copyright protected to the author(s) stated above. However, 
- you can use, redistribute and/or modify it for free under the terms of the 
- 2-clause BSD-like license given in the document section of this project.  
+*  File: CryptoRandom.java
+* 
+*  Project JUtilClasses
+*  @author Wolfgang Keller
+*  Created 
+* 
+*  Copyright (c) 2022 by Wolfgang Keller, Munich, Germany
+* 
+This program is not public domain software but copyright protected to the 
+author(s) stated above. However, you can use, redistribute and/or modify it 
+under the terms of the GNU Library or Lesser General Public License as 
+published by the Free Software Foundation, version 3.0 of the License.
 
- This program is distributed in the hope that it will be useful, but WITHOUT
- ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
- FOR A PARTICULAR PURPOSE. See the license for more details.
+This program is distributed in the hope that it will be useful, but WITHOUT
+ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+
+You should have received a copy of the License along with this program; if not,
+write to the Free Software Foundation, Inc., 59 Temple Place - Suite 330, 
+Boston, MA 02111-1307, USA, or go to http://www.gnu.org/copyleft/gpl.html.
 */
-
-package kse.utilclass.misc;
 
 import java.awt.Dimension;
 import java.awt.MouseInfo;
@@ -27,6 +32,9 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Random;
+
+import kse.utilclass.misc.Log;
+import kse.utilclass.misc.Util;
 
 /**
  *  Enhanced random generator for cryptographic purposes. Claims to be 

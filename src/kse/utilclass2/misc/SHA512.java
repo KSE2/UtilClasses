@@ -18,7 +18,10 @@
  FOR A PARTICULAR PURPOSE. See the license for more details.
 */
 
-package kse.utilclass.misc;
+package kse.utilclass2.misc;
+
+import kse.utilclass.misc.HashMac;
+import kse.utilclass.misc.Util;
 
 /**
  * @version $Revision: 1.2 $
