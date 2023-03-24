@@ -32,18 +32,19 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.EventObject;
 import java.util.HashMap;
+import java.util.Hashtable;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Vector;
+import java.util.Objects;
 
 import kse.utilclass.misc.Util;
 
 
-
 /** 
- * Class that allows automated mirroring of data org.kse.outsource.files into copies or other kind of
+ * Class that allows automated mirroring of data files into copies or other kind of
  * representations on a separate storage area (currently on local disk space) on a 
  * frequent basis.
  * 
@@ -61,9 +62,8 @@ public class MirrorFileManager {
     private static final String CHECKTHREAD_NAME = "MirrorFileManager.filechecking";  
     private static final String SAVETHREAD_NAME = "MirrorFileManager.saving";
     
-    private Vector<Mirrorable>  mfList = new Vector<Mirrorable>();
-    private HashMap<Mirrorable, MirrorFileAdminRecord> mfRecords 
-                = new HashMap<Mirrorable, MirrorFileAdminRecord>(); 
+    private Hashtable<String, Mirrorable>  mfList = new Hashtable<>();
+    private HashMap<String, MirrorFileAdminRecord> mfRecords = new HashMap<>(); 
     private ArrayList<OperationListener> operListeners;
 
     private CheckThread     checkThread; 
@@ -78,24 +78,24 @@ public class MirrorFileManager {
     /** Creates a new mirror file manager with the same background thread priority
      * as the calling thread.
      * 
-     * @param rootDirectory <code>File</code> location of mirror org.kse.outsource.files
+     * @param rootDirectory <code>File</code> location of mirror files
      * @param period int time in seconds between file investigation loops
      * @throws NullPointerException
      * @throws IllegalArgumentException
      */
-    public MirrorFileManager ( File rootDirectory, int period ) {
+    public MirrorFileManager (File rootDirectory, int period) {
         this(rootDirectory, period, Thread.currentThread().getPriority());
     }
     
     /** Creates a new mirror file manager.
      * 
-     * @param rootDirectory <code>File</code> location of mirror org.kse.outsource.files
+     * @param rootDirectory <code>File</code> location of mirror files
      * @param period int time in seconds (&gt;0) between file investigation loops
      * @param threadPriority int thread priority setting for this manager's background tasks
      * @throws NullPointerException
      * @throws IllegalArgumentException
      */
-    public MirrorFileManager ( File rootDirectory, int period, int threadPriority ) {
+    public MirrorFileManager (File rootDirectory, int period, int threadPriority) {
         if ( rootDirectory == null ) {
             throw new NullPointerException( "root dir missing");
         }
@@ -112,18 +112,18 @@ public class MirrorFileManager {
         init( threadPriority );
     }
 
-    private void init ( int threadPriority ) {
-        
+    private void init (int threadPriority) {
         // create the file checking thread
         checkThread = new CheckThread(threadPriority);
         checkThread.start();
     }
 
-    public void finalize () {
+    @Override
+	public void finalize () {
         exit();
     }
     
-    /** Sets the filename prefix for mirror org.kse.outsource.files.
+    /** Sets the filename prefix for mirror files.
      * The prefix can be left void by setting it to "" or
      * <b>null</b>. It has a default value of <code>DEFAULT_MIRROR_PREFIX</code>.
      * 
@@ -133,7 +133,7 @@ public class MirrorFileManager {
         mirrorFilePrefix = prefix == null ? "" : prefix;
     }
     
-    /** Sets the filename extension (suffix) for mirror org.kse.outsource.files.
+    /** Sets the filename extension (suffix) for mirror files.
      * The suffix must not be void. It has a default value 
      * of <code>DEFAULT_MIRROR_SUFFIX</code>.
      * 
@@ -156,9 +156,10 @@ public class MirrorFileManager {
     }
     
     /** Sets the service thread's file-check period in seconds.
+     * 
      * @param period int seconds, greater 0
      */
-    public void setCheckPeriod( int period ) {
+    public void setCheckPeriod (int period) {
         if ( period < 1 ) {
             throw new IllegalArgumentException( "illegal check period: " + period );
         }
@@ -204,7 +205,7 @@ public class MirrorFileManager {
     }
 
     /** Causes the file-controlling thread of this manager to
-     * resume execution if it is in PAUSE state.
+     * resume execution after it has been paused.
      */
     public void resume () {
         checkThread.endPause();
@@ -220,8 +221,8 @@ public class MirrorFileManager {
     }
     
     /**
-     * Triggers off mirror save activity for all registered mirrorable org.kse.outsource.files.
-     * The save is only performed on org.kse.outsource.files with an open modified marker.
+     * Triggers off mirror save activity for all registered Mirrorable files.
+     * The save is only performed on files with an open modified marker.
      * This command is designed to provoke immediate action from the controller
      * thread and ends a possible sleeping state. CAUTION! This command 
      * is not required for regular execution of the manager's controller!
@@ -234,7 +235,7 @@ public class MirrorFileManager {
     }
 
     /** Returns the root directory for the manager to
-     * store and retrieve mirror org.kse.outsource.files. The rendered
+     * store and retrieve mirror files. The rendered
      * file is an absolute path.
      *  
      * @return <code>File</code> mirror manager root directory 
@@ -244,91 +245,104 @@ public class MirrorFileManager {
     }
     
     /** Returns the mirror-file of the current program session
-     * for the given mirrorable file or <b>null</b> if it doesn't
+     * for the given {@code Mirrorable} or <b>null</b> if it doesn't
      * exists. (For deleting the mirror file, method <code>
      * removeCurrentMirror()</code> should be used to allow the 
      * manager for proper state updates.)
      * 
-     * @param f <code>MirrorableFile</code>
+     * @param identifier String identifier of a {@code Mirrorable}
      * @return <code>File</code> current session mirror file or <b>null</b>
      *         if unavailable
      */
-    public File getCurrentMirror ( Mirrorable f ) {
-        MirrorFileAdminRecord rec = getFileAdminRec(f);
-        if ( rec != null ) {
-            return rec.mirrorFile;
-        }
-        return null;
+    public File getCurrentMirror ( String identifier ) {
+        MirrorFileAdminRecord rec = getFileAdminRec(identifier);
+        return rec == null ? null : rec.mirrorFile;
     }
     
-    /** Returns a list of all known history mirrors for a
-     * given Mirrorable. History mirrors are mirror org.kse.outsource.files of
-     * previous program sessions. They can amount to any number.
-     * It is save to delete rendered org.kse.outsource.files at any time as they
-     * do not interfere with the file mirror mechanics.
-     * <p>(NOTE: An IO-error during read access to the history directory
-     * is not recognised by this routine. In such a case an empty
-     * list is returned.) 
+    /** Returns a list of all stored history mirrors for a given Mirrorable. 
+     * History mirrors are mirror files of previous program sessions. They can 
+     * amount to any number. The returned list is sorted after descending time
+     * values of the files (youngest first).
      * 
-     * @param f <code>MirrorableFile</code>
-     * @return <code>List&lt;File&gt; history mirror org.kse.outsource.files (may be empty)
-     *         or <b>null</b> if Mirroable is unknown 
+     * <p>It is save to delete rendered files at any time as they do not 
+     * interfere with the mirror saving mechanics.
+     * <p>NOTE: An IO-error during read access to the history directory
+     * is not recognised by this routine. In such a case an empty
+     * list is returned.
+     * 
+     * @param identifier String identifier of a {@code Mirrorable}
+     * @return {@code List<File>} history mirror files (may be empty)
+     * @throws IllegalArgumentException if identifier is unknown
      */
-    public List<File> getHistoryMirrors ( Mirrorable f ) {
-        List<File> list = null;
-        MirrorFileAdminRecord rec = getFileAdminRec(f);
+    public List<File> getHistoryMirrors ( String identifier ) {
+        MirrorFileAdminRecord rec = getFileAdminRec(identifier);
+        if (rec == null)
+        	throw new IllegalArgumentException("(MirrorFileManager) unknown Mirrorable name : " + identifier);
         
-        if ( rec != null ) {
-            File dir = rec.getHistoryDir();
-            // this retrieves all mirror org.kse.outsource.files in the specific history dir
-            // of f. MirrorFileAdminRecord serves as list filter
-            File[] fileArr = dir.listFiles( rec );
-            list = fileArr != null ? Arrays.asList( fileArr ) : new ArrayList<File>();
-        }
-        return list;
+        // retrieve all mirror files in the specific history dir
+        // MirrorFileAdminRecord serves as list filter
+        File dir = rec.getHistoryDir();
+        File[] fileArr = dir.listFiles(rec);
+        if (fileArr == null) return new ArrayList<File>();
+
+        // sort array after descending time value
+        Comparator<File> comparator = new Comparator<File>() {
+			@Override
+			public int compare (File f1, File f2) {
+				long t1 = f1.lastModified();
+				long t2 = f2.lastModified();
+				return t1 == t2 ? 0 : t1 > t2 ? -1 : 1;
+			}
+		};
+        Arrays.sort(fileArr, comparator);
+
+        return Arrays.asList(fileArr); 
     }
 
-    /** Removes all history mirror org.kse.outsource.files of the given mirrorable file.
+    /** Removes all history mirror files of the given Mirrorable file.
      * (This also removes the specific history directory for this file
      * if the directory is empty after deletion of the mirrors.)
      *  
-     * @param f <code>MirrorableFile</code>
+     * @param identifier String identifier of a {@code Mirrorable}
      * @return boolean <b>true</b> if and only if all listed
-     *         mirror org.kse.outsource.files were deleted. On <b>false</b> the appl.
+     *         mirror files were deleted. On <b>false</b> the appl.
      *         should check <code>getHistoryMirrorIterator()</code>
-     *         for org.kse.outsource.files which could not get deleted. 
-     * 
+     *         for files which could not get deleted.
+     * @throws IllegalArgumentException if identifier is unknown
      */
-    public boolean removeHistoryMirrors ( Mirrorable f ) {
+    public boolean removeHistoryMirrors ( String identifier ) {
         boolean ok = true;
-        MirrorFileAdminRecord rec = getFileAdminRec(f);
-        if ( rec != null ) {
-            // delete all history mirrors as known by the iterator
-            List<File> hList = getHistoryMirrors(f); 
-            for (File mir : hList) {
-                ok &= mir.delete();
-            }
-
-            // delete the directory
-            File dir = rec.getHistoryDir();
-            dir.delete();
+        MirrorFileAdminRecord rec = getFileAdminRec(identifier);
+        if (rec == null) {
+        	throw new IllegalArgumentException("(MirrorFileManager) unknown Mirrorable name : " + identifier);
         }
+        
+        // delete all history mirrors as known by the iterator
+        List<File> hList = getHistoryMirrors(identifier); 
+        for (File mir : hList) {
+            ok &= mir.delete();
+        }
+
+        // delete the directory
+        File dir = rec.getHistoryDir();
+        dir.delete();
         return ok;
     }
     
-    /** Removes the current session mirror of the given mirrorable file.
-     * If a current mirror save thread is ongoing, deletion takes 
+    /** Removes the current session mirror of the given {@code Mirrorable}.
+     * If a current mirror save thread is ongoing, deletion will take 
      * place immediately after saving has terminated. 
      * 
-     * @param f <code>MirrorableFile</code>
+     * @param identifier String identifier of a {@code Mirrorable}
      */
-    public void removeCurrentMirror ( Mirrorable f ) {
-        MirrorFileAdminRecord rec = getFileAdminRec(f);
+    public void removeCurrentMirror ( String identifier ) {
+    	Mirrorable f = getMirrorable(identifier);
+        MirrorFileAdminRecord rec = getFileAdminRec(identifier);
         
-        // operate if mirrorable is registered and a mirror file known
-        if ( rec != null & rec.mirrorFile != null ) {
+        // operate if Mirrorable is registered and a mirror file saved
+        if ( f != null & rec != null && rec.mirrorFile != null ) {
             // if a save-thread is running, just mark the file for later deletion
-            if ( rec.threadActive() ) {
+            if ( rec.isSavingActive() ) {
                 rec.deleteMarked = true;
             // otherwise attempt delete and update save-number    
             } else if ( rec.mirrorFile.delete() ) {
@@ -341,28 +355,24 @@ public class MirrorFileManager {
         }
     }
     
-    /** Iterator over contained mirrorable org.kse.outsource.files.
+    /** Iterator over contained Mirrorable objects.
      * 
      * @return <code>Iterator&lt;MirrorableFile&gt;</code>
      */
     @SuppressWarnings("unchecked")
     public Iterator<Mirrorable> iterator () {
-         return ((List<Mirrorable>)mfList.clone()).iterator();
+         return ((Hashtable<String, Mirrorable>)mfList.clone()).values().iterator();
     }
     
-    /** This method checks whether a mirror is present in the 
-     * current mirror directory. If so, it moves the mirror file (renamed) 
-     * into a special directory for the mirrorable file.
-     * 
-     * @throws InterruptedException if the calling thread was interrupted while
-     * 		   performing IO operations
+    /** This method checks whether a mirror of the mirrorable file is present in the 
+     * current mirror directory. If so, it moves the mirror file (renamed) into a special 
+     * directory for the mirrorable.
      */
-    protected void controlMirrors ( MirrorFileAdminRecord admin ) throws InterruptedException {
+    protected void controlMirrors ( MirrorFileAdminRecord admin ) {
        File mdir, mir=null, copy;
        String hstr;
        
-       try
-       {
+       try {
           mir = admin.getMirrorFileDef();
           mdir = admin.getHistoryDir();
     
@@ -388,7 +398,7 @@ public class MirrorFileManager {
 //                   .concat( mdir.getAbsolutePath() ));
           }
     
-       } catch ( IOException e ) {
+       } catch ( Exception e ) {
           e.printStackTrace();
           hstr = "WARNING! Cannot copy Mirror file<br><font color=\"green\">" + 
           mir.getAbsolutePath() + "</font>";
@@ -397,72 +407,80 @@ public class MirrorFileManager {
        }
     }  // controlMirrors
 
-    /** This method lists all history mirror org.kse.outsource.files of a <code>Mirrorable</code> 
-     * and issues "mirror file found" events (callback method of the Mirrorable object).
+    /** This method lists all history mirror files of a specific 
+     * {@code Mirrorable} and issues a "mirror file found" event 
+     * (callback method of the {@code Mirrorable} object).
+     * 
+     * @param admin {@code MirrorFileAdminRecord}
      */
-    protected void reportHistoryMirrors ( MirrorFileAdminRecord admin ) {
-       List<File> mirList = getHistoryMirrors(admin.file);
+    protected void reportHistoryMirrors ( Mirrorable file ) {
+       List<File> mirList = getHistoryMirrors(file.getIdentifier());
        if ( !mirList.isEmpty() ) {
-          // fire event of "mirror-org.kse.outsource.files found"
-          fireMirrorFilesFound(admin);
+          // fire event of "mirror-files found"
+          fireMirrorFilesFound(file, mirList);
        }
     }  // controlMirrors
 
-    /** Adds a Mirrorable to administration in this manager.
-     * (Also see the class description!) 
+    /** Adds a Mirrorable to administration in this manager. Does nothing if
+     * a Mirrorable of same identity has already been added.
+     * <p>Also see the class description! 
      * 
      * @param f <code>Mirrorable</code>
-     * @throws InterruptedException if the calling thread was interrupted while
-     * 		   performing IO operations
+     * @return boolean true = argument was added, false = nothing added
+     * @throws IllegalArgumentException if there is no identifier defined 
      */
-    public void addMirrorable ( Mirrorable f ) throws InterruptedException {
-        if ( !(mfList.contains(f) | terminated) ) {
-            mfList.add(f);
+    public boolean addMirrorable ( Mirrorable f ) {
+    	Objects.requireNonNull(f);
+    	String id = f.getIdentifier();
+    	if (id == null || id.isEmpty())
+    		throw new IllegalArgumentException();
+    	
+        if ( !(terminated || mfList.containsKey(id)) ) {
+            mfList.put(id, f);
             MirrorFileAdminRecord adminRec = new MirrorFileAdminRecord(f);
-            mfRecords.put(f, adminRec);
+            mfRecords.put(f.getIdentifier(), adminRec);
             fireListModified(adminRec, true);
             controlMirrors(adminRec);
-            reportHistoryMirrors(adminRec);
+            reportHistoryMirrors(f);
+            return true;
         }
+        return false;
     }
     
     /** Removes the given Mirrorable from administration in
-     * this mirror file manager. This does not perform any removal
-     * of mirror org.kse.outsource.files! After the Mirrorable has been removed,
-     * this manager cannot remove any of its mirror org.kse.outsource.files.
+     * this mirror file manager. This does not remove
+     * any mirror files! After the Mirrorable has been removed,
+     * this manager cannot remove any of its mirror files.
      * (Also see the class description!) 
      * 
-     * @param f <code>Mirrorable</code>
+     * @param identifier String identifier of a {@code Mirrorable}
      */
-    public void removeMirrorable ( Mirrorable f ) {
-        if ( mfList.remove(f) ) {
-            MirrorFileAdminRecord rec = mfRecords.remove(f);
-            fireListModified( rec, false );
+    public void removeMirrorable ( String identifier ) {
+        if ( mfList.remove(identifier) != null ) {
+            MirrorFileAdminRecord rec = mfRecords.remove(identifier);
+            fireListModified(rec, false);
         }
     }
     
-    /** Removes all registered Mirrorable from administration in
+    /** Removes all registered {@code Mirrorable} objects from administration in
      * this mirror file manager. This does not perform any removal
-     * of mirror org.kse.outsource.files! (Also see the class description!) 
+     * of mirror files! (Also see the class description!) 
      */
     public void removeAllMirrorables () {
-        mfList.removeAllElements();
+        mfList.clear();
         mfRecords.clear();
-        fireListModified( null, false );
+        fireListModified(null, false);
     }
     
     /** Returns the file administration record for a specific 
-     * mirrorable file or <b>null</b> if it doesn't exists.
+     * {@code Mirrorable} or <b>null</b> if it does not exists.
      * 
-     * @param f <code>MirrorableFile</code>
+     * @param identifier String identifier of a {@code Mirrorable}
      * @return <code>MirrorFileAdminRecord</code> or <b>null</b>
-     * @throws <code>NullPointerException</code> if f is null
      */
-    protected MirrorFileAdminRecord getFileAdminRec ( Mirrorable f ) {
-        if ( f == null ) {
-            throw new NullPointerException();
-        }
-        return mfRecords.get(f);
+    protected MirrorFileAdminRecord getFileAdminRec ( String identifier ) {
+    	Objects.requireNonNull(identifier);
+        return mfRecords.get(identifier);
     }
 
     
@@ -519,8 +537,10 @@ public class MirrorFileManager {
         dispatchOperationEvent(evt);
     }
     
-    protected void fireMirrorFilesFound( MirrorFileAdminRecord admin ) {
-        admin.file.mirrorsDetected( this );
+    protected void fireMirrorFilesFound( Mirrorable mir, List<File> files ) {
+    	if (!files.isEmpty()) {
+    		mir.mirrorsDetected(files);
+    	}
     }
     
     protected void fireErrorEvent(MirrorFileAdminRecord adminRec, String hstr, Throwable e) {
@@ -554,7 +574,7 @@ public class MirrorFileManager {
     public interface OperationListener {
 
         /** Called to indicate that a mirror save operation has started. 
-         * Details about org.kse.outsource.files can be obtained from the event object.
+         * Details about files can be obtained from the event object.
          *    
          * @param evt <code>OperationEvent</code>
          */
@@ -568,7 +588,7 @@ public class MirrorFileManager {
         public void fileListChanged(OperationEvent evt);
 
         /** Called to indicate that a mirror save operation has just terminated successfully. 
-         * Details about org.kse.outsource.files can be obtained from the event object.
+         * Details about files can be obtained from the event object.
          *    
          * @param evt <code>OperationEvent</code>
          */
@@ -631,13 +651,13 @@ public class MirrorFileManager {
         public void mirrorWrite ( OutputStream out ) throws IOException;
 
         /**
-         * This method is called by the manager in response to <code>addMirrorable()</code>
-         * indicating that at least one history mirror file for the added source file has 
-         * been found.
+         * This method is called by the manager in response to 
+         * <code>addMirrorable()</code> indicating that at least one history 
+         * mirror file for the added {@code Mirrorable} has been found.
          * 
-         * @param manager <code>MirrorFileManager</code>
+         * @param files {@code List<File>} history mirror files
          */
-        public void mirrorsDetected ( MirrorFileManager manager );
+        public void mirrorsDetected ( List<File> files );
     }
     
     public static class OperationEvent extends EventObject  {
@@ -750,6 +770,11 @@ public class MirrorFileManager {
         }
     }
     
+    /** This thread regularly tests all Mirrorable entries for their modified
+     * state and initiates file saving threads when required to mirror new
+     * data states. It's a daemon thread which runs as long as this mirror-file-
+     * manager is operative.
+     */
     private class CheckThread extends Thread {
 
         private boolean terminate;
@@ -779,25 +804,23 @@ public class MirrorFileManager {
                     }
                 }
                 
-                // investigate all registered mirrorable org.kse.outsource.files
-                // and start mirror save-threads as required by org.kse.outsource.files' current modify-number
-                if ( !(pausing | terminate) )
-                {
+                // investigate all registered Mirrorable files
+                // and start mirror save-threads as required by files' current modify-number
+                if ( !(pausing | terminate) ) {
                     @SuppressWarnings("unchecked")
-                    Vector<Mirrorable> fileList = (Vector<Mirrorable>)mfList.clone();
-                    for ( Mirrorable f : fileList ) {
-                        MirrorFileAdminRecord admin = getFileAdminRec(f);
+                    Mirrorable[] marr = mfList.values().toArray(new Mirrorable[mfList.size()]);
+                    for ( Mirrorable f : marr ) {
+                        MirrorFileAdminRecord admin = getFileAdminRec(f.getIdentifier());
                         
-                        // check if not a another save thread is still running
-                        // in this case break this operation
+                        // check if not another save thread is still running
+                        // in this case ignore this Mirrorable
                         if ( admin.saveThread != null && admin.saveThread.isAlive() ) {
                             continue;
-                        } else {
-                            admin.saveThread = null;
                         }
+						admin.saveThread = null;
 
                         // create and start a file-save thread if modified marker is set
-                        // for this file
+                        // for this Mirrorable
                         if ( f.getModifyNumber() != admin.fileSaveNumber ) {
                             admin.saveThread = new FileSaveThread( f, admin );
                             admin.saveThread.start();
@@ -808,14 +831,14 @@ public class MirrorFileManager {
             System.out.println( "# MirrorFileManager terminated" );
         }
 
-        /** Causes this thread to pause execution until a call to <code>
+        /** Causes this check-thread to pause execution until a call to <code>
          * endPause</code> occurs.
          */
         public void pause () {
             pausing = true;
         }
         
-        /** Causes this thread to continue execution if it is in
+        /** Causes this check-thread to continue execution if it is in
          * PAUSING state.
          */
         public synchronized void endPause () {
@@ -843,7 +866,7 @@ public class MirrorFileManager {
     
     private class FileSaveThread extends Thread {
 
-        private Mirrorable file;
+    	private Mirrorable file;
         private int modifyNumber;
         private MirrorFileAdminRecord adminRec;
 
@@ -867,11 +890,14 @@ public class MirrorFileManager {
             // and ensure existence of the target directory
             File targetFile = adminRec.getMirrorFileDef();
             Util.ensureFilePath(targetFile, null);
+            
+            // define the temporary file which is written as a precursor to the target
+            File tmpFile = new File( targetFile.getAbsolutePath() + ".tmp" );
 
             // let application write persistent file data
             OutputStream fileOut;
             try {
-                fileOut = new BufferedOutputStream( new FileOutputStream( targetFile ) );
+                fileOut = new BufferedOutputStream(new FileOutputStream(tmpFile));
                 adminRec.mirrorFile = null;
                 opFile.mirrorWrite(fileOut);
                 fileOut.close();
@@ -881,6 +907,18 @@ public class MirrorFileManager {
             } catch (IOException e1) {
                 fireErrorEvent(adminRec, "cannot write mirror file", e1);
             }
+            
+            // remove current mirror (if present) and rename temporary file
+            try {
+            	if (targetFile.exists() && !targetFile.delete()) {
+            		throw new IOException("unable to delete file: " + targetFile);
+            	}
+            	if (!tmpFile.renameTo(targetFile)) {
+            		throw new IOException("unable to rename file: " + targetFile);
+            	}
+            } catch (Exception e) {
+                fireErrorEvent(adminRec, "error in renaming mirror temporary file", e);
+			}
 
             // update save-state
             adminRec.fileSaveNumber = modifyNumber;
@@ -910,9 +948,7 @@ public class MirrorFileManager {
         FileSaveThread saveThread;  // not null if a mirror save has taken or is taking place
         
         public MirrorFileAdminRecord (Mirrorable f) {
-            if ( f == null ) {
-                throw new NullPointerException();
-            }
+        	Objects.requireNonNull(f);
             file = f;
             fileSaveNumber = f.getModifyNumber();
 
@@ -934,7 +970,8 @@ public class MirrorFileManager {
             mirrorFile = mir.isFile() ? mir : null;
         }
         
-        public MirrorFileAdminRecord clone () {
+        @Override
+		public MirrorFileAdminRecord clone () {
             try {
                 MirrorFileAdminRecord cl = (MirrorFileAdminRecord) super.clone();
                 return cl;
@@ -945,11 +982,11 @@ public class MirrorFileManager {
         }
         
         /** Returns <b>true</b> if and only if there currently is a 
-         * file-save thread active for the mirror file of this record.
+         * file-save thread running for the mirror file of this record.
          * 
          * @return boolean 
          */
-        public boolean threadActive () {
+        public boolean isSavingActive () {
             return saveThread != null && saveThread.isAlive();
         }
 
@@ -958,31 +995,29 @@ public class MirrorFileManager {
          * 
          * @param File mirror file definition
          */
-        public File getMirrorFileDef ()
-        {
+        public File getMirrorFileDef () {
            String path = mirrorFilePrefix + fileID + mirrorFileSuffix;
            return new File( getMirrorRootDirectory(), path );
         }
         
         /** Returns the file definition for the directory 
          * within the mirror root directory that may hold history mirror 
-         * org.kse.outsource.files of the mirrorable file.
+         * files of the mirrorable file.
          * (Rendered file does not imply this directory exists!)
          * 
          * @return <code>File</code> directory (absolute path) 
          */
         public File getHistoryDir () {
-            return new File( getMirrorRootDirectory(), fileID );
+            return new File(getMirrorRootDirectory(), fileID);
         }
 
         @Override
         /**
-         * We filter mirror org.kse.outsource.files of this manager as identified by
-         * prefix and suffix. (This has nothing to do with specific
-         * record values but resides in this structure for convenience.)
+         * We filter mirror files of this manager as identified by
+         * prefix and suffix.
          *  
-         * @param pathname File
-         * @return boolean
+         * @param pathname File candidate for a mirror-file
+         * @return boolean true iff argument designates a valid mirror-file path
          */
         public boolean accept( File pathname ) {
             String filename = pathname.getName();
@@ -992,18 +1027,42 @@ public class MirrorFileManager {
 
     }
 
-    /** Returns the identifier for mirrors of the parameter Mirrorable.
-     *  (This ID is used as the name-core of current mirror org.kse.outsource.files and
-     *  for history mirror directories.)
+    /** Returns the hex-based identifier for mirror files of the given 
+     * {@code Mirrorable}.
+     * <p>This ID showing a hex-number is used as the name-core of the current 
+     * mirror file of the given Mirrorable and for its history sub-directory 
+     * under the mirror root directory.
      *   
-     * @param f <code>Mirrorable</code>
-     * @return String mirror ID string
+     * @param identifier String identifier of a {@code Mirrorable}
+     * @return String mirror ID or null if identifier is unknown
      */
-    public String getMirrorName( Mirrorable f ) {
-        MirrorFileAdminRecord adminRec = getFileAdminRec(f);
-        return adminRec.fileID;
+    public String getMirrorName( String identifier ) {
+        MirrorFileAdminRecord adminRec = getFileAdminRec(identifier);
+        return adminRec == null ? null : adminRec.fileID;
     }
 
-
+    /** Returns the {@code Mirrorable} of the given name (identifier) or null
+     * if such an object was not found.
+     * 
+     * @param name String identifier of a {@code Mirrorable} 
+     * @return {@code Mirrorable}
+     */
+    public Mirrorable getMirrorable (String name) {
+    	return name == null ? null : mfList.get(name);
+    }
+    
+    /** Sets the valid modify number for a specific <code>Mirrorable</code>
+     * to the currently supplied state. This sets the given <code>Mirrorable</code>
+     * free of mirror file creation until the next increment of its modify number.
+     * 
+     * @param identifier String identifier of a <code>Mirrorable</code>
+     */
+    public void setMirrorableSaved ( String identifier ) {
+       Mirrorable f = getMirrorable(identifier);
+       MirrorFileAdminRecord adminRec = getFileAdminRec(identifier);
+       if (adminRec != null) {
+          adminRec.fileSaveNumber = f.getModifyNumber();
+       }
+    }
 
 }

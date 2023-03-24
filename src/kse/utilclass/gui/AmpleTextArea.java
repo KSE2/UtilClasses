@@ -36,10 +36,13 @@ import java.awt.event.KeyEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.print.PrinterException;
-import java.net.URL;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Objects;
 import java.util.TimeZone;
+import java.util.Timer;
+import java.util.TimerTask;
 import java.util.concurrent.Executor;
 
 import javax.swing.AbstractAction;
@@ -52,6 +55,7 @@ import javax.swing.JTextArea;
 import javax.swing.KeyStroke;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
+import javax.swing.event.UndoableEditEvent;
 import javax.swing.event.UndoableEditListener;
 import javax.swing.text.AbstractDocument;
 import javax.swing.text.BadLocationException;
@@ -60,28 +64,43 @@ import javax.swing.text.Document;
 import javax.swing.text.JTextComponent;
 import javax.swing.text.Keymap;
 import javax.swing.text.TextAction;
+import javax.swing.undo.CompoundEdit;
 import javax.swing.undo.UndoManager;
+import javax.swing.undo.UndoableEdit;
 
 import kse.utilclass.dialog.GUIService;
 import kse.utilclass.misc.Log;
 import kse.utilclass.misc.Util;
 
-
 /**
- * This extension of <code>JTextArea</code> adds the following features to the editor field.
+ * This extension of <code>JTextArea</code> adds the following features to the
+ * editor field.
  * 
- * <p>1. Undo/Redo manager with 100 operations stack
+ * <p>1. Undo/Redo manager with 100 operations stack and a time based text
+ * agglomeration function
  * <br>2. a context menu popping up at mouse right-click with commands to
- * handle clipboard exchange, undo/redo, line-wrapping and select-all
- * <br>3. keystroke support with these (additional) assignments: CTRL-W (select-word),
- * CTRL-L (select line), CTRL-P (select paragraph), CTRL-Z (undo), CTRL-Y (redo)  
+ * handle clipboard exchange and deletion, undo/redo, printing, line-wrapping
+ * and select-all
+ * <br>3. keystroke support with these (additional) assignments: CTRL-W 
+ * (select-word), CTRL-L (select line), CTRL-P (select paragraph), 
+ * CTRL-Z (undo), CTRL-Y, CTRL-SHIFT-Z (redo), CTRL-D (current date), 
+ * CTRL-T (current time), CTRL-U (universal date and time), CTRL-F1 (help), 
+ * CTRL-PLUS (increase font size), CTRL-MINUS (decrease font size). 
+ * 
+ * <p>With {@code getMenuActions()} the list of available menu actions can be
+ * obtained and modified. This is the way to add individual items to the 
+ * popup menu of this component. The F1 key is assigned to a "Help" action
+ * with command-key "menu.help"; this class does not define such an action.
  */
 
-public class AmpleTextArea extends JTextArea {
-	
+public class AmpleTextArea extends JTextArea implements MenuActivist {
+   private static final int DEFAULT_EDIT_AGGLO_TIME = 750; 
    private static HashMap<Object, Action> actionLookup;
-   protected ActionListener actions = new Actions();
-   private UndoManager undoManager = new UndoManager();
+   private static Timer timer = new Timer();
+   
+   protected ActionListener actions = new ATA_Action();
+   private List<Action> menuActions;
+   private ATA_UndoManager undoManager = new ATA_UndoManager();
    private PopupListener popupListener = new PopupListener();
    private Executor executor;
    
@@ -132,17 +151,12 @@ public class AmpleTextArea extends JTextArea {
 	}
 	
 	private void init ( String name ) {
-	   Action actionList[];
-	
 	   if ( actionLookup == null ) {
-	      //  get all the actions JTextArea provides for us
-	      actionList = getActions();
-	      
-	      // put them in a Hashtable so we can retrieve them by Action.NAME
+	      // put default actions in a Hashtable so we can retrieve them w/ Action.NAME
 	      actionLookup = new HashMap<Object, Action>();
-	      for (int j=0; j < actionList.length; j+=1) {
-	        actionLookup.put(actionList[j].getValue(Action.NAME), actionList[j]);
-	   //     System.out.println( "-- TextArea Action: " + actionList[j].getValue(Action.NAME) );
+	      for (Action a : getActions()) {
+	        actionLookup.put(a.getValue(Action.NAME), a);
+	        System.out.println( "-- TextArea Action: " + a.getValue(Action.NAME) );
 	      }
 	   }
 	
@@ -180,9 +194,9 @@ public class AmpleTextArea extends JTextArea {
 	   Action action;
 	   KeyStroke key;
 	   
-	   // fetch or create the keymap specific to JPWS text areas
+	   // create the keymap specific to this text area
 	   parent = getKeymap();
-	   map = JTextComponent.addKeymap( "JPWS_TextAreaKeymap", parent );
+	   map = JTextComponent.addKeymap( "AmpleTextArea_Keymap", parent );
 	   
 	   // add CTRL-W: select current word 
 	   key = KeyStroke.getKeyStroke( KeyEvent.VK_W, InputEvent.CTRL_MASK );
@@ -214,27 +228,27 @@ public class AmpleTextArea extends JTextArea {
 	      
 	   // add CTRL-D: insert current date (local) action 
 	   key = KeyStroke.getKeyStroke( KeyEvent.VK_D, InputEvent.CTRL_MASK );
-	   map.addActionForKeyStroke(key,  new Actions( "keystroke.CTRL-D" ));
+	   map.addActionForKeyStroke(key,  new ATA_Action( "keystroke.CTRL-D" ));
 	
 	   // add CTRL-T: insert current time (local) action 
 	   key = KeyStroke.getKeyStroke( KeyEvent.VK_T, InputEvent.CTRL_MASK );
-	   map.addActionForKeyStroke(key,  new Actions( "keystroke.CTRL-T" ));
+	   map.addActionForKeyStroke(key,  new ATA_Action( "keystroke.CTRL-T" ));
 	
 	   // add CTRL-U: insert current date+time (UT) action 
 	   key = KeyStroke.getKeyStroke( KeyEvent.VK_U, InputEvent.CTRL_MASK );
-	   map.addActionForKeyStroke(key, new Actions( "keystroke.CTRL-U" ));
+	   map.addActionForKeyStroke(key, new ATA_Action( "keystroke.CTRL-U" ));
 	
 	   // add CTRL-U: insert current date+time (UT) action 
 	   key = KeyStroke.getKeyStroke( KeyEvent.VK_F1, 0 );
-	   map.addActionForKeyStroke(key, new Actions( "menu.help"));
+	   map.addActionForKeyStroke(key, new ATA_Action( "menu.help"));
 	
 	   // add CTRL-PLUS: use larger font action 
 	   key = KeyStroke.getKeyStroke( KeyEvent.VK_PLUS, InputEvent.CTRL_MASK );
-	   map.addActionForKeyStroke(key, new Actions( "keystroke.CTRL-PLUS" ));
+	   map.addActionForKeyStroke(key, new ATA_Action( "keystroke.CTRL-PLUS" ));
 	
 	   // add CTRL-MINUS: use larger font action 
 	   key = KeyStroke.getKeyStroke( KeyEvent.VK_MINUS, InputEvent.CTRL_MASK );
-	   map.addActionForKeyStroke(key, new Actions( "keystroke.CTRL-MINUS" ));
+	   map.addActionForKeyStroke(key, new ATA_Action( "keystroke.CTRL-MINUS" ));
 	
 	   // activate keymap for this text area
 	   setKeymap( map );
@@ -245,6 +259,8 @@ public class AmpleTextArea extends JTextArea {
 	   undoManager.discardAllEdits();
 	}
 	
+	public UndoManager getUndoManager () {return undoManager;}
+	
 	/** Associates this editor with a text document. Additional to
 	 * {@code JTextDocument} this version of the method extracts and takes
 	 * over the first {@code UndoManager} it finds in the list of 
@@ -254,7 +270,7 @@ public class AmpleTextArea extends JTextArea {
 	 */
 	@Override
 	public void setDocument (Document doc) {
-		UndoManager undoMan = null;
+		ATA_UndoManager undoMan = null;
 		
 		// check whether there is an undo-manager in the document
 		// we prefer to take this if present
@@ -263,15 +279,15 @@ public class AmpleTextArea extends JTextArea {
 			for (UndoableEditListener eli : adc.getUndoableEditListeners()) {
 				if (eli instanceof UndoManager) {
 					// take over undo-manager from argument 
-					undoMan = (UndoManager) eli;
+					undoMan = (ATA_UndoManager) eli;
 					break;
 				}
 			}
 		}
 
 		// create and add a new undo-manager if not present
-		if (undoMan == null) {
-			undoMan = new UndoManager();
+		if (undoMan == null && doc != null) {
+			undoMan = new ATA_UndoManager();
 			doc.addUndoableEditListener(undoMan);
 		}
 		undoManager = undoMan;
@@ -304,24 +320,39 @@ public class AmpleTextArea extends JTextArea {
 	}
 	
 	/**
-	 * Sets the feature for popup menu active or inactive.
-	 * (Default value is <b>true</b>.)
+	 * Sets the feature for popup menu active or inactive. (Default value is 
+	 * <b>true</b>.) If the popup is active then a popup menu can be called by
+	 * triggering the right mouse button within this component's display area. 
 	 * 
 	 * @param v boolean <b>true</b> == popup active
 	 */
-	public void setPopupActive ( boolean v ) {
+	public void setPopupEnabled ( boolean v ) {
 	   isPopupActive = v;
 	}
 	
-	/**
-	 * Whether popup menu feature is active in this text area. 
-	 * @return boolean 
+	/** Sets the time for which a text input will be agglomerated with the next 
+	 * input for a single undo/redo action. There is a minimum of 0 and a 
+	 * maximum of 5000. Value zero switches off agglomeration.
+	 *  
+	 * @param time int milliseconds
 	 */
-	public boolean getPopupActive () {
+	public void setUndoAggloTime (int time) {
+		if (undoManager != null) {
+			undoManager.aggloTime = Math.min(0, Math.max(5000, time));
+		}
+	}
+	
+	/**
+	 * Whether the popup menu feature is enabled for this text area.
+	 *  
+	 * @return boolean true == popup enabled 
+	 */
+	public boolean isPopupEnabled () {
 	   return isPopupActive;
 	}
 	
 	/** Returns the text of the line where the caret is currently positioned.
+	 * 
 	 *  @return String line text or <b>null</b> if unavailable 
 	 */
 	public String getCurrentLine () {
@@ -387,7 +418,7 @@ public class AmpleTextArea extends JTextArea {
 			h = "Copy";
 		} else if (token.equals( "menu.edit.cut" )) {
 			h = "Cut";
-		} else if (token.equals( "menu.edit.erase" )) {
+		} else if (token.equals( "menu.edit.delete" )) {
 			h = "Delete";
 		} else if (token.equals( "menu.edit.linewrap" )) {
 			h = "Line Wrap";
@@ -404,22 +435,78 @@ public class AmpleTextArea extends JTextArea {
 		return h;
 	}
 	
-	/**
-	 * Renders a popup menu for the context of this text area
-	 * including actual options of the UNDO manager.
+	/** Returns a list with edit actions available in this editor for the 
+	 * purpose of creating a menu or a popup menu. The elements of the list are 
+	 * stable during a program session, i.e. they can be persistently modified. 
+	 * Also the list itself can be modified.
+	 * <p>The list contains at least the actions of the standard action names 
+	 * defined in this interface with Undo and Redo at the leading places.
 	 * 
-	 * @return <code>JPopupMenu</code>
+	 * @return {@code List<Action>}
 	 */
-	protected JPopupMenu getPopupMenu () {
-	   JPopupMenu menu;
+	@Override
+	public List<Action> getMenuActions () {
+		if (menuActions == null) {
+			createMenuActions();
+		}
+		return menuActions;
+	}
+	
+	/** Returns the editor action of the given action command token or null
+	 * if such an action is not defined.
+	 * 
+	 * @param cmd String command token
+	 * @return {@code Action} or null if not found
+	 */
+	@Override
+	public Action getActionByCommand (String cmd) {
+		Objects.requireNonNull(cmd);
+		for (Action a : getMenuActions()) {
+			if (cmd.equals(a.getValue(Action.ACTION_COMMAND_KEY))) return a;
+		}
+		return null;
+	}
+	
+	/** Returns the editor action with the given command token from the 
+	 * given action list or null if such an action is not defined.
+	 * The list is reduced by the action returned.
+	 *
+	 * @param list {@code List<Action>}
+	 * @param cmd String command token
+	 * @return {@code Action} or null if not found
+	 */
+	private Action extractActionFromList (List<Action> list, String cmd) {
+		Objects.requireNonNull(cmd);
+		for (Action a : list) {
+			if (cmd.equals(a.getValue(Action.ACTION_COMMAND_KEY))) {
+				list.remove(a);
+				return a;
+			}
+		}
+		return null;
+	}
+	
+	private void createMenuActions () {
+		menuActions = new ArrayList<Action>();
+		menuActions.add(new UndoAction());
+		menuActions.add(new RedoAction());
+		
+		menuActions.add(new ATA_Action("menu.edit.cut"));
+		menuActions.add(new ATA_Action("menu.edit.copy"));
+		menuActions.add(new ATA_Action("menu.edit.paste"));
+		menuActions.add(new ATA_Action("menu.edit.delete"));
+		
+		menuActions.add(new ATA_Action("menu.edit.linewrap"));
+		menuActions.add(new ATA_Action("menu.edit.print"));
+		menuActions.add(new ATA_Action("menu.edit.selectall"));
+	}
+	
+	@Override
+	public JMenu getJMenu() {
 	   JMenuItem item;
-	   JMenu subMenu;
-	   Action action;
-	   URL urlArr[];
-	   String hstr, addArr[];
+	   Action act;
 	   
-	   menu = new JPopupMenu();
-	   requestFocus();
+	   JMenu menu = new JMenu();
 	
 	   if ( undoManager.canUndo() ) {
 	      item = new JMenuItem( new UndoAction() );
@@ -435,95 +522,86 @@ public class AmpleTextArea extends JTextArea {
 	      menu.add( item );
 	   }
 	
-	   if ( undoManager.canUndo() || undoManager.canRedo() )
+	   int menuSize = menu.getMenuComponentCount();
+	   if ( menuSize > 0) {
 	      menu.addSeparator();
+	   }
+	   
+	   List<Action> alist = new ArrayList<Action>(getMenuActions());
+	   extractActionFromList(alist, "menu.edit.undo");
+	   extractActionFromList(alist, "menu.edit.redo");
 	   
 	   // the standard CUT action (clipboard)
-	   item = new JMenuItem( getIntl( "menu.edit.cut" ) );
-	   action = actionLookup.get( DefaultEditorKit.cutAction );
-	   item.addActionListener( action );
-	   menu.add( item );
+	   act = extractActionFromList(alist, "menu.edit.cut");
+	   if (act != null) {
+		   menu.add(act);
+	   }
 	
 	   // the COPY action (clipboard)
-	   item = makeMenuItem( "menu.edit.copy" );
-	   menu.add( item );
+	   act = extractActionFromList(alist, "menu.edit.copy");
+	   if (act != null) {
+		   menu.add(act);
+	   }
 	   
 	   // the standard PASTE action (clipboard)
-	   item = new JMenuItem( getIntl( "menu.edit.paste" ) );
-	   action = actionLookup.get( DefaultEditorKit.pasteAction );
-	   item.addActionListener( action );
-	   menu.add( item );
+	   act = extractActionFromList(alist, "menu.edit.paste");
+	   if (act != null) {
+		   menu.add(act);
+	   }
 	
 	   // erases a text selection if present, otherwise the entire field 
-	   item = makeMenuItem( "menu.edit.erase" );
-	   menu.add( item );
+	   act = extractActionFromList(alist, "menu.edit.delete");
+	   if (act != null) {
+		   menu.add(act);
+	   }
 	
-	   menu.addSeparator();
-	
-//	   // investigate current text selection or entire text line
-//	   if ( (((hstr = getSelectedText()) != null || (hstr = getText()) != null))
-//			 && hstr.length() < 100000 )
-//	   {
-//	      // investigate for browsing URLs (multiple occurrences enabled)
-//	      if ( (urlArr = Util.extractURLs( hstr )) != null ) {
-//	         if ( urlArr.length == 1 ) {
-//	            // add browsing command if single url was found 
-//	            item = menu.add( ActionHandler.getStartBrowserAction( urlArr[0] , false ));
-//	            item.setForeground( MenuHandler.MENUITEM_MARKED_COLOR );
-//	         } else {
-//	            // create and add a submenu containing the URLs as item names
-//	            subMenu = new JMenu( ResourceLoader.getCommand( "menu.edit.starturl" ) );
-//	            subMenu.setForeground( MenuHandler.MENUITEM_MARKED_COLOR );
-//	            menu.add( subMenu );
-//	            for ( URL u : urlArr ) {
-//	               item = subMenu.add( ActionHandler.getStartBrowserAction( u , true ));
-//	               item.setForeground( MenuHandler.MENUITEM_MARKED_COLOR );
-//	            }
-//	         }
-//	      }
-//	      
-//	      // investigate for EMAIL ADDRESSES (multiple occurrences enabled)
-//	      if ( (addArr = Util.extractMailAddresses( hstr )) != null ) {
-//	         if ( addArr.length == 1 ) {
-//	            // add browsing command if single url was found 
-//	            item = menu.add( ActionHandler.getStartEmailAction( addArr[0], false ) );
-//	            item.setForeground( MenuHandler.MENUITEM_MARKED_COLOR );
-//	         } else {
-//	            // create and add a submenu containing the URLs as item names
-//	            subMenu = new JMenu( ResourceLoader.getCommand( "menu.edit.startmail" ) );
-//	            subMenu.setForeground( MenuHandler.MENUITEM_MARKED_COLOR );
-//	            menu.add( subMenu );
-//	            for ( String h : addArr ) {
-//	               item = subMenu.add( ActionHandler.getStartEmailAction( h , true ));
-//	               item.setForeground( MenuHandler.MENUITEM_MARKED_COLOR );
-//	            }
-//	         }
-//	      }
-//	   }
+	   if (menu.getMenuComponentCount() > menuSize) {
+		   menu.addSeparator();
+		   menuSize = menu.getMenuComponentCount();
+	   }
 	
 	   // line wrapping option
-	   item = new JCheckBoxMenuItem( getIntl( "menu.edit.linewrap" ) );
-	   item.setSelected( getLineWrap() );
-	   item.setActionCommand( "menu.edit.linewrap" );
-	   item.addActionListener( actions );
-	   menu.add( item );
+	   act = extractActionFromList(alist, "menu.edit.linewrap");
+	   if (act != null) {
+		   item = new JCheckBoxMenuItem(act);
+		   item.setSelected(getLineWrap());
+		   menu.add( item );
+	   }
 	
 	   // printing the text
-	   if (executor != null) {
+	   act = extractActionFromList(alist, "menu.edit.print");
+	   if (act != null && executor != null) {
 		   item = makeMenuItem( "menu.edit.print" );
 		   menu.add( item );
 	   }
 	   
-	   item = new JMenuItem( getIntl( "menu.edit.selectall" ) );
-	   action = actionLookup.get( DefaultEditorKit.selectAllAction );
-	   item.addActionListener( action );
-	   menu.add( item );
+	   act = extractActionFromList(alist, "menu.edit.selectall");
+	   if (act != null) {
+		   menu.add(act);
+	   }
 	   
-	   // TODO menu entry "Help"
-//	   menu.addSeparator();
-//	   item = makeMenuItem( "menu.help" );
-//	   menu.add( item );
+	   // user defined actions
+	   if (!alist.isEmpty()) {
+		   if (menu.getMenuComponentCount() > menuSize) {
+			   menu.addSeparator();
+		   }
+		   for (Action a : alist) {
+			   menu.add(a);
+		   }
+	   }
 	   return menu;
+	}
+
+	/**
+	 * Renders a popup menu for the context of this text area
+	 * including current options of the UNDO manager.
+	 * 
+	 * @return <code>JPopupMenu</code>
+	 */
+	@Override
+	public JPopupMenu getPopupMenu () {
+		JMenu menu = getJMenu();
+		return menu.getPopupMenu();
 	}
 	
 	public void setDialogOwner (Window owner) {
@@ -531,7 +609,7 @@ public class AmpleTextArea extends JTextArea {
 	}
 	
 	/** Creates a new menu item which executes in this class'es 
-	 * <code>Actions</code>. The name of the item is drawn from <code>
+	 * <code>ATA_Action</code>. The name of the item is drawn from <code>
 	 * ResourceLoader.getCommand(token)</code> and the action
 	 * command == token. Optional a keyboard mnemonic can be set.
 	 * 
@@ -541,16 +619,16 @@ public class AmpleTextArea extends JTextArea {
 	 *         was <b>null</b> or empty 
 	 */
 	protected JMenuItem makeMenuItem ( String token, int mnemonic )	{
-	   if ( token == null || token.isEmpty() ) return null;
+	   if (token == null || token.isEmpty()) return null;
 	   
-	   JMenuItem item = new JMenuItem( getIntl( token ), mnemonic );
-	   item.setActionCommand( token );
-	   item.addActionListener( actions );
+	   JMenuItem item = new JMenuItem(getIntl(token), mnemonic);
+	   item.setActionCommand(token);
+	   item.addActionListener(actions);
 	   return item;
 	}
 	
 	/** Creates a new menu item which executes in this class'es 
-	 * <code>Actions</code>. The name of the item is drawn from <code>
+	 * <code>ATA_Action</code>. The name of the item is drawn from <code>
 	 * ResourceLoader.getCommand(token)</code> and the action
 	 * command == token. 
 	 * 
@@ -559,75 +637,142 @@ public class AmpleTextArea extends JTextArea {
 	 *         was <b>null</b> or empty 
 	 */
 	protected JMenuItem makeMenuItem( String token ) {
-	   return makeMenuItem( token, 0 );
+	   return makeMenuItem(token, 0);
 	}
+	
+	/** Sets the executor for tasks in separate threads for this element. 
+	 * 
+	 * @param e {@code Executor}
+	 */
+	public void setExecutor (Executor e) {
+		executor = e;
+	}
+	
+	public void startPrinting () {
+	   String hstr, name;
+	   int length;
+	   if ( executor == null ) {
+		   hstr = getIntl("msg.fail.noexecutor");
+		   GUIService.failureMessage(hstr);
+		   return;
+	   }
+	   
+	   // set Attribute "LineWrap" to user option
+	   boolean hasLongLine = false;
+	   if ( !getLineWrap() ) {
+	      // check for cut lines
+	      int lines = getLineCount();
+	      for ( int i = 0; i < lines; i++ ) {
+	         try { length = getLineEndOffset(i) - getLineStartOffset(i); }
+	         catch ( BadLocationException e1 ) 
+	         { length = 0; }
+	         hasLongLine |= length > 80;
+	         if ( hasLongLine )
+	            break;
+	      }
+	      
+	      // ask user for line wrapping if we have a long line
+	      name = getName() == null ? "?" : getName();
+	      hstr = getIntl( "msg.ask.longlineswrap" );
+	      hstr = Util.substituteText( hstr, "$name", name );
+	      if ( hasLongLine && GUIService.userConfirm( owner, hstr ) ) {
+	         setLineWrap( true );
+	      }
+	   }
+	
+	   // start a thread with the print job
+       executor.execute( new PrintJob() );
+	}
+
 	
 	//  *****************  inner classes  ****************
 	
-	private class Actions extends AbstractAction implements ActionListener
-	{
+	private class ATA_Action extends AbstractAction implements ActionListener {
 	   String command;
 	   
-	   public Actions ()
-	   {}
+	   public ATA_Action () {}
 	   
-	   public Actions ( String command ) {
-	      if ( command == null || command.isEmpty() )
+	   /** Creates a new ATA-Action w/ the given action command.
+	    * 
+	    * @param command String action command
+	    * @throws IllegalArgumentException if command is null or empty
+	    */
+	   public ATA_Action (String command) {
+	      if (command == null || command.isEmpty())
 	         throw new IllegalArgumentException("null or empty ACTION COMMAND");
 	      
-	      this.putValue( ACTION_COMMAND_KEY, command );
+	      this.putValue(ACTION_COMMAND_KEY, command);
+          this.putValue(NAME, getIntl(command));
+          this.command = command;
 	   }
 	
+	   /** Creates a new ATA-Action w/ the given action command and presentation
+	    * name.
+	    * 
+	    * @param command String action command
+	    * @param name String presentation name of the command (in menus, 
+	    *             buttons, etc.)
+	    * @throws IllegalArgumentException if command is null or empty
+	    */
 	   @SuppressWarnings("unused")
-	   public Actions ( String command, String name ) {
-	      this( command );
-	      if ( name != null )
-	         this.putValue( NAME, name );
+	   public ATA_Action (String command, String name) {
+	      this(command);
+	      if (name != null)
+	         this.putValue(NAME, name);
 	   }
 	
-	//   public Actions ( String command, String name, int mnemonic )
+	//   public ATA_Action ( String command, String name, int mnemonic )
 	//   {
 	//      this( command, name );
 	//      if ( mnemonic > 0 )
 	//         this.putValue( MNEMONIC_KEY, mnemonic );
 	//   }
+	   
+//	   /** The command defined on this action or null if none was defined.
+//	    * 
+//	    * @return String or null
+//	    */
+//	   public String getCommand () {return command;}
 	
 	   @Override
-	   public void actionPerformed ( ActionEvent e )  {
+	   public void actionPerformed (ActionEvent e)  {
 	      String cmd = command == null ? e.getActionCommand() : command;
-	      if ( cmd == null ) return;
-	      String hstr;
-	      
+	      if (cmd == null) return;
+
 	      try {
-	      if ( cmd.equals( "menu.edit.linewrap" ) ) {
-	         setLineWrap( !getLineWrap() );
+	      if (cmd.equals( "menu.edit.linewrap" )) {
+	         setLineWrap(!getLineWrap());
 	
-	      } else if ( cmd.equals( "menu.edit.erase" ) ) {
+	      } else if (cmd.equals( "menu.edit.delete" )) {
 	         try {
 	            Dimension adr = getUserSelection();
 	            if (adr != null) {
 	            	AmpleTextArea.this.getDocument().remove(adr.width, adr.height-adr.width);
+		     	    selection = null;
 	            }
 	         } catch ( BadLocationException e1 ) { 
 	        	 e1.printStackTrace(); 
 	         }
 	
-	      } else if ( cmd.equals( "menu.edit.copy" ) ) {
-//	         try {
+	      } else if (cmd.equals( "menu.edit.copy" )) {
 	            Dimension adr = getOperationSelection();
-//	            hstr = getText( adr.width, adr.height-adr.width );
 	            setSelectionStart(adr.width);
 	            setSelectionEnd(adr.height);
 	     	    actionLookup.get( DefaultEditorKit.copyAction ).actionPerformed(null);
 
+	      } else if ( cmd.equals( "menu.edit.cut" ) ) {
+	     	    actionLookup.get( DefaultEditorKit.cutAction ).actionPerformed(null);
+	     	    selection = null;
+	     	    
+	      } else if ( cmd.equals( "menu.edit.paste" ) ) {
+	     	    actionLookup.get( DefaultEditorKit.pasteAction ).actionPerformed(null);
+	     	    
+	      } else if ( cmd.equals( "menu.edit.selectall" ) ) {
+	     	    actionLookup.get( DefaultEditorKit.selectAllAction).actionPerformed(null);
+	     	    
 	      } else if ( cmd.equals( "menu.edit.print" ) ) {
 	         startPrinting();
 
-	      // TODO menu help
-//	      } else if ( cmd.equals( "menu.help" ) ) {
-//	         GUIService.toggleHelpDialog( owner, "dlg.help.notespopup" );
-	      
-	
 	      } else if ( cmd.equals( "keystroke.CTRL-U" ) ) {
 	         String dtext = Util.standardTimeString( System.currentTimeMillis(),
 	               TimeZone.getTimeZone( "UTC" )).concat( " UT " );
@@ -646,12 +791,10 @@ public class AmpleTextArea extends JTextArea {
 	      } else if ( cmd.equals( "keystroke.CTRL-PLUS" ) ) {
 	    	  Font font = AmpleTextArea.this.getFont();
 	    	  AmpleTextArea.this.setFont( font.deriveFont(font.getSize2D() + 1) );
-	//    	  Log.log(10, "-- CTRL PLUS pressed");
 
 	      } else if ( cmd.equals( "keystroke.CTRL-MINUS" ) ) {
 	    	  Font font = AmpleTextArea.this.getFont();
 	    	  AmpleTextArea.this.setFont( font.deriveFont( Math.max(4, font.getSize2D() - 1)) );
-	//    	  Log.log(10, "-- CTRL MINUS pressed");
 	      }
 
 	   // uncaught exception during any command (protects the caller) 
@@ -660,13 +803,31 @@ public class AmpleTextArea extends JTextArea {
 	      GUIService.failureMessage( owner, "Unable to excute command: ".concat( cmd ), e1 );
 	   }
 	   }
-	}  // Actions
+
+	   @Override
+	   public int hashCode() {
+		   return command == null ? super.hashCode() : command.hashCode();
+	   }
+
+	   @Override
+	   public boolean equals (Object obj) {
+		   if (obj == null || !(obj instanceof ATA_Action)) return false;
+		   ATA_Action oa = (ATA_Action)obj;
+		   return command == null ? this == oa : command.equals(oa.command);
+	   }
+
+	   @Override
+	   public String toString() {
+		   return "ATA-Action " + command;
+	   }
+	}  // ATA_Action
 	
 	
 	private class UndoAction extends TextAction	{
 
 		public UndoAction () {
 	      super( undoManager.getUndoPresentationName() );
+	      putValue(ACTION_COMMAND_KEY, "menu.edit.undo");
 	   }
 	
 		@Override
@@ -681,6 +842,7 @@ public class AmpleTextArea extends JTextArea {
 		
 	   public RedoAction () {
 	      super( undoManager.getRedoPresentationName() );
+	      putValue(ACTION_COMMAND_KEY, "menu.edit.redo");
 	   }
 	
 	   @Override
@@ -734,8 +896,9 @@ public class AmpleTextArea extends JTextArea {
 		}
 		
 		private void maybeShowPopup(MouseEvent e) {
-		    if ( e.isPopupTrigger() && getPopupActive() ) {
-		        getPopupMenu().show(e.getComponent(), e.getX(), e.getY());
+		    if (e.isPopupTrigger() && isPopupEnabled()) {
+		 	   requestFocus();
+		       getPopupMenu().show(e.getComponent(), e.getX(), e.getY());
 		    }
 		}
 
@@ -754,48 +917,138 @@ public class AmpleTextArea extends JTextArea {
 	   }
 	}
 
-	/** Sets the executor for tasks in separate threads for this element. 
-	 * 
-	 * @param e {@code Executor}
-	 */
-	public void setExecutor (Executor e) {
-		executor = e;
+	private class EditTimerTask extends TimerTask {
+		CompoundEdit edit;
+		
+		EditTimerTask (CompoundEdit edit) {
+			Objects.requireNonNull(edit);
+			this.edit = edit;
+		}
+		
+		@Override
+		public void run() {
+			edit.end();
+			Log.log(8, "(AmpleTextArea.EditTimerTask) ended compound edit, " + edit.getPresentationName());
+		}
 	}
 	
-	public void startPrinting () {
-	   String hstr, name;
-	   int length;
-	   if ( executor == null ) {
-		   hstr = getIntl("msg.fail.noexecutor");
-		   GUIService.failureMessage(hstr);
-		   return;
-	   }
-	   
-	   // set Attribute "LineWrap" to user option
-	   boolean hasLongLine = false;
-	   if ( !getLineWrap() ) {
-	      // check for cut lines
-	      int lines = getLineCount();
-	      for ( int i = 0; i < lines; i++ ) {
-	         try { length = getLineEndOffset(i) - getLineStartOffset(i); }
-	         catch ( BadLocationException e1 ) 
-	         { length = 0; }
-	         hasLongLine |= length > 80;
-	         if ( hasLongLine )
-	            break;
-	      }
-	      
-	      // ask user for line wrapping if we have a long line
-	      name = getName() == null ? "?" : getName();
-	      hstr = getIntl( "msg.ask.longlineswrap" );
-	      hstr = Util.substituteText( hstr, "$name", name );
-	      if ( hasLongLine && GUIService.userConfirm( owner, hstr ) ) {
-	         setLineWrap( true );
-	      }
-	   }
-	
-	   // start a thread with the print job
-       executor.execute( new PrintJob() );
+	private class ATA_UndoManager extends UndoManager {
+
+		private EditTimerTask editTimerTask;
+		private long editTime;
+	    /** wait time for a compound-edit to end its agglomeration phase (millisec) */
+	    private int aggloTime = DEFAULT_EDIT_AGGLO_TIME;
+
+		@Override
+		public UndoableEdit editToBeUndone() {
+			return super.editToBeUndone();
+		}
+
+		@Override
+		public UndoableEdit editToBeRedone() {
+			return super.editToBeRedone();
+		}
+
+		@Override
+		public void undoableEditHappened (UndoableEditEvent e) {
+			UndoableEdit edit = e.getEdit();
+			if (aggloTime == 0) {
+				undoManager.addEdit(edit);
+				return;
+			}
+			
+			CompoundEdit cEdit;
+			long now = System.currentTimeMillis();
+			Log.log(8, "(AmpleTextArea.undoableEditHappened) undoable edit happened: " + edit.getPresentationName());
+		
+			UndoableEdit prevEdit = undoManager.editToBeUndone();
+			if (now - editTime < aggloTime && prevEdit != null) {
+				Log.log(8, "(AmpleTextArea.undoableEditHappened) low time branch, previous = " + prevEdit.getPresentationName());
+				if (!prevEdit.addEdit(edit)) {
+					cEdit = new CompoundEdit();
+					cEdit.addEdit(edit);
+					undoManager.addEdit(cEdit);
+					Log.log(8, "(AmpleTextArea.undoableEditHappened) created new compound edit w/  " + edit.getPresentationName());
+				} else {
+					cEdit = (CompoundEdit) prevEdit;
+					Log.log(8, "(AmpleTextArea.undoableEditHappened) added edit to previous: " + edit.getPresentationName());
+				}
+		
+				// cancel a previous end-edit task
+				if (editTimerTask != null) {
+					editTimerTask.cancel();
+				}
+				
+			} else {
+				cEdit = new CompoundEdit();
+				cEdit.addEdit(edit);
+				undoManager.addEdit(cEdit);
+				Log.log(8, "(AmpleTextArea.undoableEditHappened) high time branch, new compound w/ edit = " + edit.getPresentationName());
+			}
+			editTime = now;
+		
+			// initiate a task to end the compound edit
+			editTimerTask = new EditTimerTask(cEdit);
+			timer.schedule(editTimerTask, aggloTime);
+		}
 	}
+
+//	/**
+//		 * Renders a popup menu for the context of this text area
+//		 * including actual options of the UNDO manager.
+//		 * 
+//		 * @return <code>JPopupMenu</code>
+//		 */
+//		public JPopupMenu getPopupMenu () {
+//		   JMenuItem item;
+//		   
+//		   JPopupMenu menu = new JPopupMenu();
+//	//	   // investigate current text selection or entire text line
+//	//	   if ( (((hstr = getSelectedText()) != null || (hstr = getText()) != null))
+//	//			 && hstr.length() < 100000 )
+//	//	   {
+//	//	      // investigate for browsing URLs (multiple occurrences enabled)
+//	//	      if ( (urlArr = Util.extractURLs( hstr )) != null ) {
+//	//	         if ( urlArr.length == 1 ) {
+//	//	            // add browsing command if single url was found 
+//	//	            item = menu.add( ActionHandler.getStartBrowserAction( urlArr[0] , false ));
+//	//	            item.setForeground( MenuHandler.MENUITEM_MARKED_COLOR );
+//	//	         } else {
+//	//	            // create and add a submenu containing the URLs as item names
+//	//	            subMenu = new JMenu( ResourceLoader.getCommand( "menu.edit.starturl" ) );
+//	//	            subMenu.setForeground( MenuHandler.MENUITEM_MARKED_COLOR );
+//	//	            menu.add( subMenu );
+//	//	            for ( URL u : urlArr ) {
+//	//	               item = subMenu.add( ActionHandler.getStartBrowserAction( u , true ));
+//	//	               item.setForeground( MenuHandler.MENUITEM_MARKED_COLOR );
+//	//	            }
+//	//	         }
+//	//	      }
+//	//	      
+//	//	      // investigate for EMAIL ADDRESSES (multiple occurrences enabled)
+//	//	      if ( (addArr = Util.extractMailAddresses( hstr )) != null ) {
+//	//	         if ( addArr.length == 1 ) {
+//	//	            // add browsing command if single url was found 
+//	//	            item = menu.add( ActionHandler.getStartEmailAction( addArr[0], false ) );
+//	//	            item.setForeground( MenuHandler.MENUITEM_MARKED_COLOR );
+//	//	         } else {
+//	//	            // create and add a submenu containing the URLs as item names
+//	//	            subMenu = new JMenu( ResourceLoader.getCommand( "menu.edit.startmail" ) );
+//	//	            subMenu.setForeground( MenuHandler.MENUITEM_MARKED_COLOR );
+//	//	            menu.add( subMenu );
+//	//	            for ( String h : addArr ) {
+//	//	               item = subMenu.add( ActionHandler.getStartEmailAction( h , true ));
+//	//	               item.setForeground( MenuHandler.MENUITEM_MARKED_COLOR );
+//	//	            }
+//	//	         }
+//	//	      }
+//	//	   }
+//		
+//		   // TODO menu entry "Help"
+//	//	   menu.addSeparator();
+//	//	   item = makeMenuItem( "menu.help" );
+//	//	   menu.add( item );
+//		   return menu;
+//		}
 	
 }

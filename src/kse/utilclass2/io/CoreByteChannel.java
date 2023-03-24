@@ -42,6 +42,10 @@ import kse.utilclass.misc.Util;
  * 'int' value range. At any time while the channel is open the current state
  * of the content can be obtained as a byte array copy.
  * 
+ * <p>In similarity to {@code FileChannel} this channel has additional methods
+ * for transferring data between channels ({@code transferTo()} and {@code 
+ * transferFrom()}).
+ * 
  * <p>Operation modi can be set over the constructor. They are:
  * <br>READ-ONLY, WRITE-ONLY, READ-WRITE, APPEND-ONLY, READ-APPEND. In both
  * APPEND modi all write-methods will always append to the top of the channel

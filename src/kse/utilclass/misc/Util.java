@@ -1769,7 +1769,9 @@ public class Util {
 		while (en.hasMoreElements()) {
 			TreePath p = en.nextElement();
 			int row = tree.getRowForPath(p);
-			set.set(row);
+			if (row >= 0) {
+				set.set(row);
+			}
 		}
 
 		byte[] arr = set.toByteArray();
@@ -1798,15 +1800,13 @@ public class Util {
 		GUIService.performOnEDT(run);
 	}
 
-	public static int textVariance ( char[] ca )
-	   {
-	      BitSet set = new BitSet();
-	      int i;
-	      
-	      for ( i = 0; i < ca.length; i++ )
-	         set.set( ca[i] );
-	      return set.cardinality();         
-	   }
+	public static int textVariance (char[] ca) {
+	    BitSet set = new BitSet();
+	    for (int i = 0; i < ca.length; i++) {
+	        set.set( ca[i] );
+	    }
+	    return set.cardinality();         
+    }
 
 	/** Transforms the given text into a HTML encoded version which is 
 	 * broken down into multiple lines on the given column limit.

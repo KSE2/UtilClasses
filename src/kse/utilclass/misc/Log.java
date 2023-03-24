@@ -1,29 +1,27 @@
-package kse.utilclass.misc;
-
 /*
-*  File: Log.java
-* 
-*  Project JUtilClasses
-*  @author Wolfgang Keller
-*  Created 
-* 
-*  Copyright (c) 2022 by Wolfgang Keller, Munich, Germany
-* 
-This program is not public domain software but copyright protected to the 
-author(s) stated above. However, you can use, redistribute and/or modify it 
-under the terms of the GNU Library or Lesser General Public License as 
-published by the Free Software Foundation, version 3.0 of the License.
+ *  File: Global.java
+ * 
+ *  Project PWSLIB3
+ *  @author Wolfgang Keller
+ *  Created 23.08.2004
+ * 
+ *  Copyright (c) 2005-2015 by Wolfgang Keller, Munich, Germany
+ * 
+ This program is copyright protected to the author(s) stated above. However, 
+ you can use, redistribute and/or modify it for free under the terms of the 
+ 2-clause BSD-like license given in the document section of this project.  
 
-This program is distributed in the hope that it will be useful, but WITHOUT
-ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
-FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
-
-You should have received a copy of the License along with this program; if not,
-write to the Free Software Foundation, Inc., 59 Temple Place - Suite 330, 
-Boston, MA 02111-1307, USA, or go to http://www.gnu.org/copyleft/gpl.html.
+ This program is distributed in the hope that it will be useful, but WITHOUT
+ ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+ FOR A PARTICULAR PURPOSE. See the license for more details.
 */
 
+package kse.utilclass.misc;
+
 import java.io.PrintStream;
+import java.util.ArrayList;
+
+import javax.swing.SwingUtilities;
 
 /**
  *  Log in org.jpws.pwslib.global
@@ -31,26 +29,41 @@ import java.io.PrintStream;
  */
 public class Log
 {
-   public static final int DEFAULT_DEBUGLEVEL = 2;
-   public static final int DEFAULT_LOGLEVEL = 2;
+   public static final int DEFAULT_DEBUGLEVEL = 1;
+   public static final int DEFAULT_LOGLEVEL = 1;
    
    public static PrintStream out = System.out;
    public static PrintStream err = System.err;
    
+   
+   private static String logName = "";
    private static int debugLevel = DEFAULT_DEBUGLEVEL;
    private static int logLevel = DEFAULT_LOGLEVEL;
-   private static boolean debug = false;
-   private static boolean logging = false;
+   private static boolean debug = true;
+   private static boolean logging = true;
+   private static boolean isThreadIds;
    
+   
+   private static ArrayList<String> excludeList = new ArrayList<String>(); 
+
 /**
  * 
  */
 private Log () {
 }
 
+private static String getThreadName () {
+   if (SwingUtilities.isEventDispatchThread()) return "[EDT]";
+   Thread thd = Thread.currentThread();
+
+   String thdName =  thd.isDaemon() ? "[THD] " : "[TH" + thd.getPriority() + 
+		             (isThreadIds ? "-" + String.valueOf(thd.getId()) : "") + "] "; 
+   return thdName;
+}
+
 public static void debug ( int level, Object obj ) {
-   if ( debug && level <= debugLevel )
-      out.println( "[jqb] DEB: " + String.valueOf(obj) );
+   if ( debug && level <= debugLevel && !excluded(obj.toString() ) )
+      out.println( logName + " D " + getThreadName() + String.valueOf(obj) );
 }
 
 public static void debug ( int level, String str ) {
@@ -65,10 +78,13 @@ public static void setDebugLevel ( int v ) {
    debugLevel = v;
 }
 
-public static void log ( int level, String str )
-{
-   if ( logging && level <= logLevel )
-      out.println( "[jqb] log: " + str );
+public static void setModuleName ( String name ) {
+   logName = name;
+}
+
+public static void log ( int level, String str ) {
+   if ( logging && level <= logLevel && !excluded(str) )
+      out.println( logName + " L " + getThreadName() + str );
 }
 
 public static void setLogging ( boolean v ) {
@@ -80,31 +96,53 @@ public static void setLogLevel ( int v ) {
 }
 
 /** The current logging report level.
- *  @since 0-3-0
  */
 public static int getLogLevel () {
    return logLevel;
 }
 
 /** The current debugging report level.
- *  @since 0-3-0
  */
 public static int getDebugLevel () {
    return debugLevel;
 }
 
-public static boolean getDebug () {return debug;}
-
-public static boolean getLogging () {return logging;}
-
 public static void error ( int level, Object obj ) {
    if ( debug && level <= debugLevel )
-      err.println( "[jqb] ERR: *** " + String.valueOf(obj) );
+      err.println( logName + " ERR: " + getThreadName() + " *** " + String.valueOf(obj) );
 }
 
 public static void error ( int level, String str ) {
    error( level, (Object)str );
 }
 
+/** Defines a list of strings as exclude criteria for logging events.
+ * A logging event is suppressed if its message contains one of the exclude
+ * list elements.
+ *  
+ * @param arr String[] array of exclude criteria
+ */
+public static void setExcludeList ( String[] arr ) {
+	excludeList.clear();
+	for ( String hstr : arr ) {
+		excludeList.add(hstr);
+	}
+}
+
+private static boolean excluded ( String msg ) {
+   for ( String token : excludeList ) {
+      if ( msg.indexOf(token) > -1 )
+         return true;
+   }
+   return false;
+}
+
+public static boolean isThreadIds() {
+	return isThreadIds;
+}
+
+public static void setThreadIds(boolean isThreadIds) {
+	Log.isThreadIds = isThreadIds;
+}
 
 }

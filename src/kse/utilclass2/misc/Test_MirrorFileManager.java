@@ -263,24 +263,24 @@ public void test_remove_mirrorables () throws InterruptedException {
 
     // attempting removes
     
-    mm.removeMirrorable(dataF1);
+    mm.removeMirrorable(dataF1.getIdentifier());
     assertTrue( "value Mirrorables not 2", iteratorSize(mm.iterator()) == 2 );
     assertTrue( "list holds removed Mirrorable", !knowsIterable( mm.iterator(), dataF1) );
     assertTrue( "list does not hold Mirrorable, 2", knowsIterable( mm.iterator(), dataF2) );
     assertTrue( "list does not hold Mirrorable, 3", knowsIterable( mm.iterator(), dataF3) );
 
     // attempting void remove
-    mm.removeMirrorable(dataF1);
+    mm.removeMirrorable(dataF1.getIdentifier());
     assertTrue( "value Mirrorables not 2", iteratorSize(mm.iterator()) == 2 );
     assertTrue( "list does not hold Mirrorable, 2", knowsIterable( mm.iterator(), dataF2) );
     assertTrue( "list does not hold Mirrorable, 3", knowsIterable( mm.iterator(), dataF3) );
     
-    mm.removeMirrorable(dataF3);
+    mm.removeMirrorable(dataF3.getIdentifier());
     assertTrue( "value Mirrorables not 1", iteratorSize(mm.iterator()) == 1 );
     assertTrue( "list holds removed Mirrorable", !knowsIterable( mm.iterator(), dataF3) );
     assertTrue( "list does not hold Mirrorable, 2", knowsIterable( mm.iterator(), dataF2) );
 
-    mm.removeMirrorable(dataF2);
+    mm.removeMirrorable(dataF2.getIdentifier());
     assertTrue( "value Mirrorables not 0 (remove)", iteratorSize(mm.iterator()) == 0 );
     assertTrue( "list holds removed Mirrorable", !knowsIterable( mm.iterator(), dataF2) );
 
@@ -302,18 +302,18 @@ public void test_current_mirrors () throws InterruptedException {
     TestMirrorable1 dataF2 = new TestMirrorable1(256);
     TestMirrorable1 dataF3 = new TestMirrorable1(26);
     
-    assertTrue( "illegal returned mirror file object", mm.getCurrentMirror(dataF1) == null );
+    assertTrue( "illegal returned mirror file object", mm.getCurrentMirror(dataF1.getIdentifier()) == null );
 
     // TEST: Add and modify Mirrorables (test mirrors as well)
 
     // one mirrorable
     mm.addMirrorable(dataF1);
     Util.sleep(2000);
-    assertTrue( "illegal returned mirror file object", mm.getCurrentMirror(dataF1) == null );
+    assertTrue( "illegal returned mirror file object", mm.getCurrentMirror(dataF1.getIdentifier()) == null );
     
     dataF1.update();
     Util.sleep(2000);
-    File mir1 = mm.getCurrentMirror(dataF1);
+    File mir1 = mm.getCurrentMirror(dataF1.getIdentifier());
     assertTrue( "falsely void mirror file, 1", mir1 != null );
     assertTrue( "mirror file does not exist, 1", mir1.isFile() );
     try {
@@ -327,14 +327,14 @@ public void test_current_mirrors () throws InterruptedException {
     mm.addMirrorable(dataF2);
     mm.addMirrorable(dataF3);
     Util.sleep(2000);
-    assertTrue( "illegal returned mirror file object", mm.getCurrentMirror(dataF2) == null );
-    assertTrue( "illegal returned mirror file object", mm.getCurrentMirror(dataF3) == null );
+    assertTrue( "illegal returned mirror file object", mm.getCurrentMirror(dataF2.getIdentifier()) == null );
+    assertTrue( "illegal returned mirror file object", mm.getCurrentMirror(dataF3.getIdentifier()) == null );
     
     dataF2.update();
     dataF3.update(329);
     Util.sleep(2000);
-    File mir2 = mm.getCurrentMirror(dataF2);
-    File mir3 = mm.getCurrentMirror(dataF3);
+    File mir2 = mm.getCurrentMirror(dataF2.getIdentifier());
+    File mir3 = mm.getCurrentMirror(dataF3.getIdentifier());
     
     assertTrue( "falsely void mirror file, 2", mir2 != null );
     assertTrue( "mirror file does not exist, 2", mir2.isFile() );
@@ -349,15 +349,15 @@ public void test_current_mirrors () throws InterruptedException {
     }
     
     // remove mirror org.kse.outsource.files
-    mm.removeCurrentMirror(dataF1);
+    mm.removeCurrentMirror(dataF1.getIdentifier());
     assertTrue( "failed to remove current mirror, 1", !mir1.isFile() );
-    mir1 = mm.getCurrentMirror(dataF1);
+    mir1 = mm.getCurrentMirror(dataF1.getIdentifier());
     assertTrue( "falsly non-void mirror file, 1", mir1 == null );
     
     // renewed update
     dataF1.update();
     Util.sleep(2000);
-    mir1 = mm.getCurrentMirror(dataF1);
+    mir1 = mm.getCurrentMirror(dataF1.getIdentifier());
     assertTrue( "falsely void mirror file, 1", mir1 != null );
     assertTrue( "mirror file does not exist, 1", mir1.isFile() );
     try {
@@ -368,19 +368,19 @@ public void test_current_mirrors () throws InterruptedException {
     }
 
     // remove more org.kse.outsource.files
-    mm.removeCurrentMirror(dataF2);
-    mm.removeCurrentMirror(dataF3);
+    mm.removeCurrentMirror(dataF2.getIdentifier());
+    mm.removeCurrentMirror(dataF3.getIdentifier());
     assertTrue( "failed to remove current mirror, 2", !mir2.isFile() );
     assertTrue( "failed to remove current mirror, 3", !mir3.isFile() );
-    mir2 = mm.getCurrentMirror(dataF2);
+    mir2 = mm.getCurrentMirror(dataF2.getIdentifier());
     assertTrue( "falsly non-void mirror file, 2", mir2 == null );
-    mir3 = mm.getCurrentMirror(dataF3);
+    mir3 = mm.getCurrentMirror(dataF3.getIdentifier());
     assertTrue( "falsly non-void mirror file, 3", mir3 == null );
 
     // finally remove no. 1
-    mm.removeCurrentMirror(dataF1);
+    mm.removeCurrentMirror(dataF1.getIdentifier());
     assertTrue( "failed to remove current mirror, 1", !mir1.isFile() );
-    mir1 = mm.getCurrentMirror(dataF1);
+    mir1 = mm.getCurrentMirror(dataF1.getIdentifier());
     assertTrue( "falsly non-void mirror file, 1", mir1 == null );
 }
 
@@ -391,17 +391,17 @@ public void test_invokeActivity () throws IOException, InterruptedException {
     TestMirrorable1 dataF1 = new TestMirrorable1(561);
     
     mm.addMirrorable(dataF1);
-    assertTrue( "illegal returned mirror file object", mm.getCurrentMirror(dataF1) == null );
+    assertTrue( "illegal returned mirror file object", mm.getCurrentMirror(dataF1.getIdentifier()) == null );
     
     dataF1.update();
     Util.sleep(2000);
-    File mir1 = mm.getCurrentMirror(dataF1);
+    File mir1 = mm.getCurrentMirror(dataF1.getIdentifier());
     assertTrue( "falsely non-void mirror file, 1", mir1 == null );
     
     // test invoke activity: one mirror save
     mm.invokeMirrorActivity();
     Util.sleep(2000);
-    mir1 = mm.getCurrentMirror(dataF1);
+    mir1 = mm.getCurrentMirror(dataF1.getIdentifier());
     byte[] block1 = getFileData(mir1);
     assertTrue( "mirror file does not exist", mir1.isFile() );
     assertTrue( "mirror content does not match, 1", Util.equalArrays( dataF1.data, block1));
@@ -430,7 +430,7 @@ public void test_invokeActivity () throws IOException, InterruptedException {
     assertTrue( "file content not modified after RESUME", !Util.equalArrays( block1, block2));
     
     // clean up
-    mm.removeCurrentMirror(dataF1);
+    mm.removeCurrentMirror(dataF1.getIdentifier());
 }
 
 @Test
@@ -446,7 +446,7 @@ public void test_pause () throws IOException, InterruptedException {
     
     dataF1.update();
     Util.sleep(2000);
-    File mir1 = mm.getCurrentMirror(dataF1);
+    File mir1 = mm.getCurrentMirror(dataF1.getIdentifier());
     byte[] dat1 = getFileData(mir1);
     
     mm.pause();
@@ -464,11 +464,11 @@ public void test_pause () throws IOException, InterruptedException {
     mm.resume();
     Util.sleep(2000);
     assertTrue( "mirror content failure F1", Util.equalArrays( dataF1.data, getFileData(mir1)) );
-    File mir2 = mm.getCurrentMirror(dataF2);
+    File mir2 = mm.getCurrentMirror(dataF2.getIdentifier());
     assertTrue( "mirror content failure F2", Util.equalArrays( dataF2.data, getFileData(mir2)) );
     
-    mm.removeCurrentMirror(dataF1);
-    mm.removeCurrentMirror(dataF2);
+    mm.removeCurrentMirror(dataF1.getIdentifier());
+    mm.removeCurrentMirror(dataF2.getIdentifier());
 }
 
 @Test
@@ -486,25 +486,25 @@ public void test_history_mirrors () throws IOException, InterruptedException {
     mm.addMirrorable(dataF1);
     dataF1.update();
     Util.sleep(2000);
-    File mir1 = mm.getCurrentMirror(dataF1);
+    File mir1 = mm.getCurrentMirror(dataF1.getIdentifier());
     assertTrue( "falsely void mirror file, 1", mir1 != null );
-    List<File> histMirs = mm.getHistoryMirrors(dataF1);
+    List<File> histMirs = mm.getHistoryMirrors(dataF1.getIdentifier());
     assertTrue( "falsely non-void history mirrors, 1", histMirs == null || histMirs.size() == 0 );
     
     // restart a manager session for F1
     mm.removeAllMirrorables();
-    assertTrue( "falsely non-void mirror file, 1", mm.getCurrentMirror(dataF1) == null );
+    assertTrue( "falsely non-void mirror file, 1", mm.getCurrentMirror(dataF1.getIdentifier()) == null );
     mm.addMirrorable(dataF1);
     
     // test exists history directory / not exists current mirror
-    File hdir1 = new File( mm.getMirrorRootDirectory(), mm.getMirrorName(dataF1) );
+    File hdir1 = new File( mm.getMirrorRootDirectory(), mm.getMirrorName(dataF1.getIdentifier()) );
     assertTrue( "history directory does not exist, 1", hdir1.isDirectory() );
     
     // look for that one history mirror 
-    histMirs = mm.getHistoryMirrors(dataF1);
+    histMirs = mm.getHistoryMirrors(dataF1.getIdentifier());
     assertTrue( "falsely void history mirrors, 1", histMirs != null && !histMirs.isEmpty() );
     assertTrue( "false iterator size: history mirrors, 1", histMirs.size() == 1 );
-    histMirs = mm.getHistoryMirrors(dataF1);
+    histMirs = mm.getHistoryMirrors(dataF1.getIdentifier());
     assertTrue( "history mirror content failure, 1", Util.equalArrays( dataF1.data, getFileData( histMirs.get(0) )) );
     
     // test if hist-mirror was correctly reported
@@ -526,44 +526,44 @@ public void test_history_mirrors () throws IOException, InterruptedException {
     dataF1.update();
     
     Util.sleep(2000);
-    mir1 = mm.getCurrentMirror(dataF1);
-    File mir2 = mm.getCurrentMirror(dataF2);
-    File mir3 = mm.getCurrentMirror(dataF3);
+    mir1 = mm.getCurrentMirror(dataF1.getIdentifier());
+    File mir2 = mm.getCurrentMirror(dataF2.getIdentifier());
+    File mir3 = mm.getCurrentMirror(dataF3.getIdentifier());
     assertTrue( "falsely void mirror file, 1b", mir1 != null );
     assertTrue( "falsely void mirror file, 2", mir2 != null );
     assertTrue( "falsely void mirror file, 3", mir3 != null );
-    assertTrue( "falsely non-void history mirrors, 2", mm.getHistoryMirrors(dataF2).isEmpty() );
-    assertTrue( "falsely non-void history mirrors, 3", mm.getHistoryMirrors(dataF3).isEmpty() );
+    assertTrue( "falsely non-void history mirrors, 2", mm.getHistoryMirrors(dataF2.getIdentifier()).isEmpty() );
+    assertTrue( "falsely non-void history mirrors, 3", mm.getHistoryMirrors(dataF3.getIdentifier()).isEmpty() );
 
     // second mod for F3 
     dataF1.update();
     Util.sleep(2000);
-    mir3 = mm.getCurrentMirror(dataF3);
+    mir3 = mm.getCurrentMirror(dataF3.getIdentifier());
     assertTrue( "falsely void mirror file, 3b", mir3 != null );
     
     // restart a manager session for F1, F2, F3
     mm.removeAllMirrorables();
-    assertTrue( "falsely non-void mirror file, 1", mm.getCurrentMirror(dataF1) == null );
-    assertTrue( "falsely non-void mirror file, 2", mm.getCurrentMirror(dataF2) == null );
-    assertTrue( "falsely non-void mirror file, 3", mm.getCurrentMirror(dataF3) == null );
+    assertTrue( "falsely non-void mirror file, 1", mm.getCurrentMirror(dataF1.getIdentifier()) == null );
+    assertTrue( "falsely non-void mirror file, 2", mm.getCurrentMirror(dataF2.getIdentifier()) == null );
+    assertTrue( "falsely non-void mirror file, 3", mm.getCurrentMirror(dataF3.getIdentifier()) == null );
     mm.addMirrorable(dataF1);
     mm.addMirrorable(dataF2);
     mm.addMirrorable(dataF3);
     
     // test exists history directory / not exists current mirror
-    File hdir2 = new File( mm.getMirrorRootDirectory(), mm.getMirrorName(dataF2) );
-    File hdir3 = new File( mm.getMirrorRootDirectory(), mm.getMirrorName(dataF3) );
+    File hdir2 = new File( mm.getMirrorRootDirectory(), mm.getMirrorName(dataF2.getIdentifier()) );
+    File hdir3 = new File( mm.getMirrorRootDirectory(), mm.getMirrorName(dataF3.getIdentifier()) );
     assertTrue( "history directory does not exist, 1b", hdir1.isDirectory() );
     assertTrue( "history directory does not exist, 2", hdir2.isDirectory() );
     assertTrue( "history directory does not exist, 3", hdir3.isDirectory() );
     
     // look for history mirrors of F1 (should be 2 now) 
-    histMirs = mm.getHistoryMirrors(dataF1);
+    histMirs = mm.getHistoryMirrors(dataF1.getIdentifier());
     assertTrue( "falsely void history mirrors, 1b", !histMirs.isEmpty() );
     assertTrue( "false list size: history mirrors, 1b", histMirs.size() == 2 );
 
     // evaluate history mirrors of F1 (one identical, one not)
-    histMirs = mm.getHistoryMirrors(dataF1);
+    histMirs = mm.getHistoryMirrors(dataF1.getIdentifier());
     int countOK = 0, countFalse = 0;
     for ( File mir : histMirs ) {
         if ( Util.equalArrays( dataF1.data, getFileData( mir ))) {
@@ -576,15 +576,15 @@ public void test_history_mirrors () throws IOException, InterruptedException {
     assertTrue( "history mirror content failure, 1c", countFalse == 1 );
     
     // look for history mirrors of F2 and F3 
-    histMirs = mm.getHistoryMirrors(dataF2);
+    histMirs = mm.getHistoryMirrors(dataF2.getIdentifier());
     assertTrue( "falsely void history mirrors, 2", !histMirs.isEmpty() );
     assertTrue( "false iterator size: history mirrors, 2", histMirs.size() == 1 );
-    histMirs = mm.getHistoryMirrors(dataF2);
+    histMirs = mm.getHistoryMirrors(dataF2.getIdentifier());
     assertTrue( "history mirror content failure, 2", Util.equalArrays( dataF2.data, getFileData( histMirs.get(0) )) );
-    histMirs = mm.getHistoryMirrors(dataF3);
+    histMirs = mm.getHistoryMirrors(dataF3.getIdentifier());
     assertTrue( "falsely void history mirrors, 3", !histMirs.isEmpty() );
     assertTrue( "false iterator size: history mirrors, 3", histMirs.size() == 1 );
-    histMirs = mm.getHistoryMirrors(dataF3);
+    histMirs = mm.getHistoryMirrors(dataF3.getIdentifier());
     assertTrue( "history mirror content failure, 3", Util.equalArrays( dataF3.data, getFileData( histMirs.get(0) )) );
     
     // test if hist-mirror was correctly reported F2 and F3
@@ -599,11 +599,11 @@ public void test_history_mirrors () throws IOException, InterruptedException {
     assertTrue( "no reported history mirror listed, 3", reportHistMirs.size() == 1 );
     
     // remove the history mirrors
-    mm.removeHistoryMirrors(dataF1);
+    mm.removeHistoryMirrors(dataF1.getIdentifier());
     assertTrue( "failed to remove history mirrors: F1", !hdir1.isDirectory() );
-    mm.removeHistoryMirrors(dataF2);
+    mm.removeHistoryMirrors(dataF2.getIdentifier());
     assertTrue( "failed to remove history mirrors: F2", !hdir2.isDirectory() );
-    mm.removeHistoryMirrors(dataF3);
+    mm.removeHistoryMirrors(dataF3.getIdentifier());
     assertTrue( "failed to remove history mirrors: F3", !hdir3.isDirectory() );
 }
 
@@ -685,8 +685,7 @@ private class TestMirrorable1 implements MirrorFileManager.Mirrorable {
     }
 
     @Override
-    public void mirrorsDetected( MirrorFileManager manager ) {
-        List<File> mlist = manager.getHistoryMirrors(this);
+    public void mirrorsDetected( List<File> mlist ) {
         for ( File mirror : mlist ) {
             System.out.println( "-- mirror file detected for: " + ID );
             System.out.println( "   file: " + mirror.getAbsolutePath() );

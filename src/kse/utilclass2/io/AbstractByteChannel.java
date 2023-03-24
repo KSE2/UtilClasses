@@ -41,9 +41,9 @@ import kse.utilclass.misc.Util;
  * held quite concise.
  * 
  * <p>Sub-class implementations need to administer the 'channelSize' value
- *  and return it as efficiently as possible in the delegated 'getChannelSize()'
- *  method. This allows for additional methods in the subclass for IO modifying 
- *  this value.
+ * and return it as efficiently as possible in the delegated 'getChannelSize()'
+ * method. This allows for additional methods in the subclass for IO modifying 
+ * this value.
  * 'position' is administered by this class as long as the standard methods are
  * used for data exchange. Otherwise the position value needs to be updated with
  * the 'position(long)' method. The initial position is zero.
