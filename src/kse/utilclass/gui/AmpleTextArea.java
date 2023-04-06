@@ -84,7 +84,7 @@ import kse.utilclass.misc.Util;
  * <br>3. keystroke support with these (additional) assignments: CTRL-W 
  * (select-word), CTRL-L (select line), CTRL-P (select paragraph), 
  * CTRL-Z (undo), CTRL-Y, CTRL-SHIFT-Z (redo), CTRL-D (current date), 
- * CTRL-T (current time), CTRL-U (universal date and time), CTRL-F1 (help), 
+ * CTRL-T (current time), CTRL-U (universal date and time), F1 (help), 
  * CTRL-PLUS (increase font size), CTRL-MINUS (decrease font size). 
  * 
  * <p>With {@code getMenuActions()} the list of available menu actions can be
@@ -94,7 +94,7 @@ import kse.utilclass.misc.Util;
  */
 
 public class AmpleTextArea extends JTextArea implements MenuActivist {
-   private static final int DEFAULT_EDIT_AGGLO_TIME = 750; 
+   private static final int DEFAULT_EDIT_AGGLO_TIME = 800; 
    private static HashMap<Object, Action> actionLookup;
    private static Timer timer = new Timer();
    
@@ -156,7 +156,7 @@ public class AmpleTextArea extends JTextArea implements MenuActivist {
 	      actionLookup = new HashMap<Object, Action>();
 	      for (Action a : getActions()) {
 	        actionLookup.put(a.getValue(Action.NAME), a);
-	        System.out.println( "-- TextArea Action: " + a.getValue(Action.NAME) );
+//	        System.out.println( "-- TextArea Action: " + a.getValue(Action.NAME) );
 	      }
 	   }
 	
@@ -412,19 +412,19 @@ public class AmpleTextArea extends JTextArea implements MenuActivist {
 		Objects.requireNonNull(token);
 		String h = "* " + token;
 		
-		if (token.equals( "menu.edit.paste" )) {
+		if (token.equals( ActionNames.PASTE )) {
 			h = "Paste";
-		} else if (token.equals( "menu.edit.copy" )) {
+		} else if (token.equals( ActionNames.COPY )) {
 			h = "Copy";
-		} else if (token.equals( "menu.edit.cut" )) {
+		} else if (token.equals( ActionNames.CUT )) {
 			h = "Cut";
-		} else if (token.equals( "menu.edit.delete" )) {
+		} else if (token.equals( ActionNames.DELETE )) {
 			h = "Delete";
-		} else if (token.equals( "menu.edit.linewrap" )) {
+		} else if (token.equals( ActionNames.LINE_WRAP )) {
 			h = "Line Wrap";
-		} else if (token.equals( "menu.edit.selectall" )) {
+		} else if (token.equals( ActionNames.SELECT_ALL )) {
 			h = "Select All";
-		} else if (token.equals( "menu.edit.print" )) {
+		} else if (token.equals( ActionNames.PRINT )) {
 			h = "Print";
 		} else if (token.equals( "msg.ask.longlineswrap" )) {
 			h = "Apply Line-Wrap to improve rendering (recommended)?";
@@ -440,7 +440,8 @@ public class AmpleTextArea extends JTextArea implements MenuActivist {
 	 * stable during a program session, i.e. they can be persistently modified. 
 	 * Also the list itself can be modified.
 	 * <p>The list contains at least the actions of the standard action names 
-	 * defined in this interface with Undo and Redo at the leading places.
+	 * defined in this interface with Undo and Redo at the leading places. (Undo
+	 * and Redo are fix elements even when there is nothing to undo or redo.)
 	 * 
 	 * @return {@code List<Action>}
 	 */
@@ -491,31 +492,29 @@ public class AmpleTextArea extends JTextArea implements MenuActivist {
 		menuActions.add(new UndoAction());
 		menuActions.add(new RedoAction());
 		
-		menuActions.add(new ATA_Action("menu.edit.cut"));
-		menuActions.add(new ATA_Action("menu.edit.copy"));
-		menuActions.add(new ATA_Action("menu.edit.paste"));
-		menuActions.add(new ATA_Action("menu.edit.delete"));
+		menuActions.add(new ATA_Action(ActionNames.CUT));
+		menuActions.add(new ATA_Action(ActionNames.COPY));
+		menuActions.add(new ATA_Action(ActionNames.PASTE));
+		menuActions.add(new ATA_Action(ActionNames.DELETE));
 		
-		menuActions.add(new ATA_Action("menu.edit.linewrap"));
-		menuActions.add(new ATA_Action("menu.edit.print"));
-		menuActions.add(new ATA_Action("menu.edit.selectall"));
+		menuActions.add(new ATA_Action(ActionNames.LINE_WRAP));
+		menuActions.add(new ATA_Action(ActionNames.PRINT));
+		menuActions.add(new ATA_Action(ActionNames.SELECT_ALL));
 	}
 	
 	@Override
 	public JMenu getJMenu() {
-	   JMenuItem item;
-	   Action act;
-	   
 	   JMenu menu = new JMenu();
+	   JMenuItem item;
 	
-	   if ( undoManager.canUndo() ) {
+	   if ( undoManager.canUndo() & isEditable()) {
 	      item = new JMenuItem( new UndoAction() );
 	      item.setAccelerator( KeyStroke.getKeyStroke(
 	            KeyEvent.VK_Z, ActionEvent.CTRL_MASK) );
 	      menu.add( item );
 	   }
 	   
-	   if ( undoManager.canRedo() ) {
+	   if ( undoManager.canRedo()  & isEditable()) {
 	      item = new JMenuItem( new RedoAction() );
 	      item.setAccelerator( KeyStroke.getKeyStroke(
 	            KeyEvent.VK_Y, ActionEvent.CTRL_MASK) );
@@ -528,30 +527,30 @@ public class AmpleTextArea extends JTextArea implements MenuActivist {
 	   }
 	   
 	   List<Action> alist = new ArrayList<Action>(getMenuActions());
-	   extractActionFromList(alist, "menu.edit.undo");
-	   extractActionFromList(alist, "menu.edit.redo");
+	   extractActionFromList(alist, ActionNames.UNDO);
+	   extractActionFromList(alist, ActionNames.REDO);
 	   
 	   // the standard CUT action (clipboard)
-	   act = extractActionFromList(alist, "menu.edit.cut");
-	   if (act != null) {
+	   Action act = extractActionFromList(alist, ActionNames.CUT);
+	   if (act != null & isEditable()) {
 		   menu.add(act);
 	   }
 	
 	   // the COPY action (clipboard)
-	   act = extractActionFromList(alist, "menu.edit.copy");
+	   act = extractActionFromList(alist, ActionNames.COPY);
 	   if (act != null) {
 		   menu.add(act);
 	   }
 	   
 	   // the standard PASTE action (clipboard)
-	   act = extractActionFromList(alist, "menu.edit.paste");
-	   if (act != null) {
+	   act = extractActionFromList(alist, ActionNames.PASTE);
+	   if (act != null & isEditable()) {
 		   menu.add(act);
 	   }
 	
 	   // erases a text selection if present, otherwise the entire field 
-	   act = extractActionFromList(alist, "menu.edit.delete");
-	   if (act != null) {
+	   act = extractActionFromList(alist, ActionNames.DELETE);
+	   if (act != null & isEditable()) {
 		   menu.add(act);
 	   }
 	
@@ -561,7 +560,7 @@ public class AmpleTextArea extends JTextArea implements MenuActivist {
 	   }
 	
 	   // line wrapping option
-	   act = extractActionFromList(alist, "menu.edit.linewrap");
+	   act = extractActionFromList(alist, ActionNames.LINE_WRAP);
 	   if (act != null) {
 		   item = new JCheckBoxMenuItem(act);
 		   item.setSelected(getLineWrap());
@@ -569,13 +568,13 @@ public class AmpleTextArea extends JTextArea implements MenuActivist {
 	   }
 	
 	   // printing the text
-	   act = extractActionFromList(alist, "menu.edit.print");
+	   act = extractActionFromList(alist, ActionNames.PRINT);
 	   if (act != null && executor != null) {
-		   item = makeMenuItem( "menu.edit.print" );
+		   item = makeMenuItem( ActionNames.PRINT );
 		   menu.add( item );
 	   }
 	   
-	   act = extractActionFromList(alist, "menu.edit.selectall");
+	   act = extractActionFromList(alist, ActionNames.SELECT_ALL);
 	   if (act != null) {
 		   menu.add(act);
 	   }
@@ -740,13 +739,13 @@ public class AmpleTextArea extends JTextArea implements MenuActivist {
 	      if (cmd == null) return;
 
 	      try {
-	      if (cmd.equals( "menu.edit.linewrap" )) {
+	      if (cmd.equals( ActionNames.LINE_WRAP )) {
 	         setLineWrap(!getLineWrap());
 	
-	      } else if (cmd.equals( "menu.edit.delete" )) {
+	      } else if (cmd.equals( ActionNames.DELETE )) {
 	         try {
 	            Dimension adr = getUserSelection();
-	            if (adr != null) {
+	            if (adr != null & isEditable()) {
 	            	AmpleTextArea.this.getDocument().remove(adr.width, adr.height-adr.width);
 		     	    selection = null;
 	            }
@@ -754,23 +753,23 @@ public class AmpleTextArea extends JTextArea implements MenuActivist {
 	        	 e1.printStackTrace(); 
 	         }
 	
-	      } else if (cmd.equals( "menu.edit.copy" )) {
+	      } else if (cmd.equals( ActionNames.COPY )) {
 	            Dimension adr = getOperationSelection();
 	            setSelectionStart(adr.width);
 	            setSelectionEnd(adr.height);
 	     	    actionLookup.get( DefaultEditorKit.copyAction ).actionPerformed(null);
 
-	      } else if ( cmd.equals( "menu.edit.cut" ) ) {
+	      } else if ( cmd.equals( ActionNames.CUT ) ) {
 	     	    actionLookup.get( DefaultEditorKit.cutAction ).actionPerformed(null);
 	     	    selection = null;
 	     	    
-	      } else if ( cmd.equals( "menu.edit.paste" ) ) {
+	      } else if ( cmd.equals( ActionNames.PASTE ) ) {
 	     	    actionLookup.get( DefaultEditorKit.pasteAction ).actionPerformed(null);
 	     	    
-	      } else if ( cmd.equals( "menu.edit.selectall" ) ) {
+	      } else if ( cmd.equals( ActionNames.SELECT_ALL ) ) {
 	     	    actionLookup.get( DefaultEditorKit.selectAllAction).actionPerformed(null);
 	     	    
-	      } else if ( cmd.equals( "menu.edit.print" ) ) {
+	      } else if ( cmd.equals( ActionNames.PRINT ) ) {
 	         startPrinting();
 
 	      } else if ( cmd.equals( "keystroke.CTRL-U" ) ) {
@@ -827,7 +826,7 @@ public class AmpleTextArea extends JTextArea implements MenuActivist {
 
 		public UndoAction () {
 	      super( undoManager.getUndoPresentationName() );
-	      putValue(ACTION_COMMAND_KEY, "menu.edit.undo");
+	      putValue(ACTION_COMMAND_KEY, ActionNames.UNDO);
 	   }
 	
 		@Override
@@ -842,7 +841,7 @@ public class AmpleTextArea extends JTextArea implements MenuActivist {
 		
 	   public RedoAction () {
 	      super( undoManager.getRedoPresentationName() );
-	      putValue(ACTION_COMMAND_KEY, "menu.edit.redo");
+	      putValue(ACTION_COMMAND_KEY, ActionNames.REDO);
 	   }
 	
 	   @Override
@@ -851,20 +850,7 @@ public class AmpleTextArea extends JTextArea implements MenuActivist {
 	         undoManager.redo();
 	   }
 	}
-	/*
-	private class LineWrapAction extends TextAction
-	{
-	   public LineWrapAction ()
-	   {
-	      super( ResourceLoader.getCommand( "menu.edit.linewrap" ) );
-	   }
-	
-	   public void actionPerformed ( ActionEvent e )
-	   {
-	      setLineWrap( !getLineWrap() );
-	   }
-	}
-	*/
+
 	private class DocListener implements DocumentListener {
 	
 		@Override
@@ -928,12 +914,11 @@ public class AmpleTextArea extends JTextArea implements MenuActivist {
 		@Override
 		public void run() {
 			edit.end();
-			Log.log(8, "(AmpleTextArea.EditTimerTask) ended compound edit, " + edit.getPresentationName());
+//			Log.log(8, "(AmpleTextArea.EditTimerTask) ended compound edit, " + edit.getPresentationName());
 		}
 	}
 	
 	private class ATA_UndoManager extends UndoManager {
-
 		private EditTimerTask editTimerTask;
 		private long editTime;
 	    /** wait time for a compound-edit to end its agglomeration phase (millisec) */
@@ -959,19 +944,19 @@ public class AmpleTextArea extends JTextArea implements MenuActivist {
 			
 			CompoundEdit cEdit;
 			long now = System.currentTimeMillis();
-			Log.log(8, "(AmpleTextArea.undoableEditHappened) undoable edit happened: " + edit.getPresentationName());
+//			Log.log(8, "(AmpleTextArea.undoableEditHappened) undoable edit happened: " + edit.getPresentationName());
 		
 			UndoableEdit prevEdit = undoManager.editToBeUndone();
 			if (now - editTime < aggloTime && prevEdit != null) {
-				Log.log(8, "(AmpleTextArea.undoableEditHappened) low time branch, previous = " + prevEdit.getPresentationName());
+//				Log.log(8, "(AmpleTextArea.undoableEditHappened) low time branch, previous = " + prevEdit.getPresentationName());
 				if (!prevEdit.addEdit(edit)) {
 					cEdit = new CompoundEdit();
 					cEdit.addEdit(edit);
 					undoManager.addEdit(cEdit);
-					Log.log(8, "(AmpleTextArea.undoableEditHappened) created new compound edit w/  " + edit.getPresentationName());
+//					Log.log(8, "(AmpleTextArea.undoableEditHappened) created new compound edit w/  " + edit.getPresentationName());
 				} else {
 					cEdit = (CompoundEdit) prevEdit;
-					Log.log(8, "(AmpleTextArea.undoableEditHappened) added edit to previous: " + edit.getPresentationName());
+//					Log.log(8, "(AmpleTextArea.undoableEditHappened) added edit to previous: " + edit.getPresentationName());
 				}
 		
 				// cancel a previous end-edit task
@@ -983,7 +968,7 @@ public class AmpleTextArea extends JTextArea implements MenuActivist {
 				cEdit = new CompoundEdit();
 				cEdit.addEdit(edit);
 				undoManager.addEdit(cEdit);
-				Log.log(8, "(AmpleTextArea.undoableEditHappened) high time branch, new compound w/ edit = " + edit.getPresentationName());
+//				Log.log(8, "(AmpleTextArea.undoableEditHappened) high time branch, new compound w/ edit = " + edit.getPresentationName());
 			}
 			editTime = now;
 		
@@ -993,6 +978,18 @@ public class AmpleTextArea extends JTextArea implements MenuActivist {
 		}
 	}
 
+	public static class ActionNames {
+		public static final String UNDO = "menu.edit.undo";
+		public static final String REDO = "menu.edit.redo"; 
+		public static final String CUT = "menu.edit.cut";
+		public static final String COPY = "menu.edit.copy";
+		public static final String PASTE = "menu.edit.paste";
+		public static final String DELETE = "menu.edit.delete"; 
+		public static final String LINE_WRAP = "menu.edit.linewrap";
+		public static final String PRINT = "menu.edit.print"; 
+		public static final String SELECT_ALL = "menu.edit.selectall";
+	}
+	
 //	/**
 //		 * Renders a popup menu for the context of this text area
 //		 * including actual options of the UNDO manager.

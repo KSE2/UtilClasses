@@ -312,6 +312,7 @@ import kse.utilclass.misc.Log;
          boolean enforceNoIcon = false;
          String option, hstr, optArr[];
          KeyStroke keyStroke = null;
+         Action action = null;
          
          // text appearance of entry (minimum definition)
          String text = arr[ i ];
@@ -369,7 +370,7 @@ import kse.utilclass.misc.Log;
                // DEFINE MENU-ITEM
                try {
                   // try get ACTION for techName from subclass
-            	  Action action = getItemAction(techName,  async);
+            	  action = getItemAction(techName,  async);
             	  if (action != null) {
             		  // define item by action
 	                  item.setAction(action);
@@ -431,7 +432,10 @@ import kse.utilclass.misc.Log;
             }
          }
 
-         item.setEnabled(enabled);
+         // set our ENABLED property iff item not defined by external Action
+         if (action == null) {
+        	 item.setEnabled(enabled);
+         }
          return item;
       }
 

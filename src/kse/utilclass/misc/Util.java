@@ -1409,6 +1409,22 @@ public class Util {
 	}
 
 	/** Translates the given text into a HTML-encoded text displayable in HTML 
+	 * environments. This version of the method does not prepended the 
+	 * {@code '<html>'} tag. 
+	 * <p>Substitutes conflicting characters in the text with HTML-masked 
+	 * expressions. This will remove all '\n' and '\r' occurrences from the 
+	 * text. 
+	 * 
+	 * @param text String source text
+	 * @param headed boolean if true the resulting text will start with 
+	 * 			{@code '<html>'}
+	 * @return String translated text
+	 */
+	public static String htmlEncoded ( String text ) {
+		return htmlEncoded(text, false);
+	}
+	
+	/** Translates the given text into a HTML-encoded text displayable in HTML 
 	 * environments. Optionally the text can be prepended by {@code '<html>'}
 	 * if this tag is not yet there. 
 	 * <p>Substitutes conflicting characters in the text with HTML-masked 
