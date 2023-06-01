@@ -29,7 +29,9 @@ import java.awt.Rectangle;
 import java.awt.Toolkit;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
+import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.io.EOFException;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
@@ -50,6 +52,7 @@ import java.nio.CharBuffer;
 import java.nio.channels.SeekableByteChannel;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.text.DecimalFormatSymbols;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.BitSet;
@@ -66,6 +69,7 @@ import java.util.Set;
 import java.util.TimeZone;
 import java.util.concurrent.TimeUnit;
 import java.util.zip.CRC32;
+import java.util.zip.GZIPOutputStream;
 
 import javax.swing.JTree;
 import javax.swing.tree.TreePath;
@@ -80,7 +84,11 @@ public class Util {
 	public static final long TM_SECOND= 1000;
 	/** A String array of size zero. */
 	public static final String[] EMPTY_STRING_ARRAY = new String[0];
+	public static final long KILO = 1000;
+	public static final long MEGA = 1000000;
 	public static final long GIGA = 1000000000;
+	public static final long TERA = 1000000000000L;
+	public static final int DEFAULT_BUFFER_SIZE = 4096*2;
 	
 	private static Random random = new Random();
 
@@ -148,6 +156,22 @@ public class Util {
 			buf.append(c);
 		}
 		return buf.toString();
+	}
+	
+	/** Returns a translation of the given character array into a byte array
+	 * where each char is written out in two bytes (most significant first).
+	 * 
+	 * @param ca char[], may be null
+	 * @return byte[] or null if the argument was null
+	 */
+	public static byte[] charToBytes (char[] ca) {
+		if (ca == null) return null;
+		byte[] ba = new byte[ca.length*2];
+		for (int i = 0; i < ca.length; i++) {
+			ba[i*2] = (byte) ((ca[i] >> 8) & 0xFF);
+			ba[i*2+1] = (byte) (ca[i] & 0xFF);
+		}
+		return ba;
 	}
 
 	/** Returns a random String value which sorts below the given value "a".
@@ -453,8 +477,8 @@ public class Util {
 
 	/** Returns a SHA-256 fingerprint value of the parameter byte buffer.
 	 * 
-	 * @param buffer data to digest
-	 * @return SHA256 digest
+	 * @param buffer byte[] data to digest
+	 * @return byte[] SHA256 digest (32 bytes)
 	 */
 	public static byte[] fingerPrint ( byte[] buffer ) {
 	   Objects.requireNonNull(buffer, "buffer is null");
@@ -463,10 +487,20 @@ public class Util {
 	   return sha.digest();
 	}
 
+	/** Returns a SHA-256 fingerprint value of the parameter byte buffer.
+	 * 
+	 * @param buffer char[] data to digest
+	 * @return byte[] SHA256 digest (32 bytes)
+	 */
+	public static byte[] fingerPrint ( char[] buffer ) {
+		Objects.requireNonNull(buffer);
+		return fingerPrint(charToBytes(buffer));
+	}
+
 	/** Returns a SHA-256 fingerprint value of the parameter string buffer.
 	 * 
 	 * @param buffer <code>String</code> data to digest
-	 * @return SHA256 digest
+	 * @return byte[] SHA256 digest (32 bytes)
 	 */
 	public static byte[] fingerPrint ( String buffer ) {
 	   SHA256 sha = new SHA256();
@@ -590,8 +624,7 @@ public class Util {
 	 * @param offs the start offset in <code>dest</code>
 	 * @return int integer as read from the byte sequence
 	 */
-	public static int readInt ( byte[] b, int offs )
-	{
+	public static int readInt ( byte[] b, int offs ) {
 	   return
 	   (((int)b[ offs + 0 ] & 0xff) <<  24) |
 	   (((int)b[ offs + 1 ] & 0xff) <<  16) |
@@ -607,8 +640,7 @@ public class Util {
 	 * @param offs the start offset in <code>dest</code>
 	 * @return int integer as read from the byte sequence
 	 */
-	public static int readIntLittle ( byte[] b, int offs )
-	{
+	public static int readIntLittle ( byte[] b, int offs ) {
 	   return
 	   ((int)b[ offs ] & 0xff) | 
 	   (((int)b[ offs + 1 ] & 0xff) <<  8) |
@@ -668,8 +700,7 @@ public class Util {
 	 * @param offs the start offset in <code>dest</code>
 	 * @return long unsigned 32-bit integer as read from the byte sequence
 	 */
-	public static long readUIntLittle ( byte[] b, int offs )
-	{
+	public static long readUIntLittle ( byte[] b, int offs ) {
 	   return readIntLittle( b, offs ) & 0xFFFFFFFFL; 
 	}
 
@@ -1174,6 +1205,7 @@ public class Util {
 	 * @param pos long data position
 	 * @param length int data length
 	 * @return byte[] data buffer
+	 * @throws EOFException
 	 * @throws IOException
 	 */
 	public static byte[] readFileSpace (File file, long pos, int length) throws IOException {
@@ -2199,6 +2231,96 @@ public class Util {
 	public static String encodeDimension (Point point) {
 		return point.x + "," + point.y;
 	}
+
+	/** Transforms the given input stream into ZIP data and returns them 
+	 * as a new input stream. The parameter input stream gets closed. The
+	 * temporary file for the resulting input stream gets closed when the 
+	 * resulting input stream gets closed.
+	 * 
+	 * @param input {@code InputStream} uncompressed data stream
+	 * @param length long expected length of input stream (may be estimate)
+	 * @param crc IntResult return CRC value of the input stream (uncompressed)
+	 * @return {@code InputStream} ZIP-data stream
+	 * @throws FileNotFoundException
+	 * @throws IOException
+	 */
+	public static InputStream getZipInputStream (InputStream input, long length, IntResult crc) 
+				throws FileNotFoundException, IOException {
+		InputStream stream;
+		OutputStream out;
+		final File zipF;
+		boolean smallSize = length <= MEGA;
+		
+		// create an appropriate output stream (buffered data)
+		if (smallSize) {
+			out = new ByteArrayOutputStream((int)length);
+			zipF = null;
+		} else {
+		    zipF = File.createTempFile("Util-", ".dat");
+			out = new FileOutputStream(zipF);
+		}
+		
+	    // create a ZIP output-stream 
+	    GZIPOutputStream zipOut = new GZIPOutputStream(out, true);
+	
+	    // transform the source stream from argument into ZIP data
+		// determine cleartext stream CRC
+	    int sourceCrc;
+		try {
+			sourceCrc = Util.transferData2(input, zipOut, DEFAULT_BUFFER_SIZE);
+		} catch (InterruptedException e) {
+			throw new IOException("interrupted during output");
+		}
+	    crc.setValue(sourceCrc);
+	    input.close();
+	    zipOut.close();
+		
+	    // create the new input stream
+	    if (smallSize) {
+	    	// create memory block read stream
+	    	stream = new ByteArrayInputStream(((ByteArrayOutputStream)out).toByteArray());
+	    } else {
+		    // open the ZIP-file as input stream
+		    stream = new FileInputStream(zipF) {
+				@Override
+				public void close() throws IOException {
+					super.close();
+					zipF.delete();
+				}
+		    };
+		}
+		return stream;
+	}
+
+	/** Overwrites the given character array with zero values.
+	 * 
+	 * @param ca char[]
+	 */
+	public static void destroy (char[] ca) {
+		for (int i = 0; i < ca.length; i++) {
+			ca[i] = 0;
+		}
+	}
+
+  /**
+   * Returns a string representation of the parameter long integer value
+   * including decimal separation signs (after VM default locale).
+   *  
+   * @param value long integer
+   * @return dotted text representation
+   */
+  public static String dottedNumber (long value) {
+	  String hstr = String.valueOf(value);
+	  String out= "";
+	  char sep = (new DecimalFormatSymbols()).getGroupingSeparator();
+	  int len= hstr.length();
+	  while( len > 3 ) {
+	     out= sep + hstr.substring(len-3, len) + out;
+	     hstr= hstr.substring(0, len-3);
+	     len= hstr.length();
+	  }
+	  return hstr + out;
+  }
 	
 }
 

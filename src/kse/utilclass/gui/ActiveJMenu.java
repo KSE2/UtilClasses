@@ -96,10 +96,10 @@ public abstract class ActiveJMenu extends JMenu {
 
         			 if (itemTextColor != null) {
                          item.setForeground(itemTextColor);
-                      }
-                      if (itemBgdColor != null) {
-                         item.setBackground(itemBgdColor);
-                      }
+                     }
+                     if (itemBgdColor != null) {
+                        item.setBackground(itemBgdColor);
+                     }
         		 }
         	 }
 

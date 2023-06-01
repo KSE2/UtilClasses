@@ -72,7 +72,7 @@ public class MirrorFileManager {
     private String          mirrorFilePrefix = DEFAULT_MIRROR_PREFIX;
     private String          mirrorFileSuffix = DEFAULT_MIRROR_SUFFIX;
     private int             checkPeriod;
-    private boolean        terminated;
+    private boolean         terminated;
     
 
     /** Creates a new mirror file manager with the same background thread priority
@@ -654,6 +654,8 @@ public class MirrorFileManager {
          * This method is called by the manager in response to 
          * <code>addMirrorable()</code> indicating that at least one history 
          * mirror file for the added {@code Mirrorable} has been found.
+         * The returned list is sorted after descending time values of the 
+         * files (youngest first).
          * 
          * @param files {@code List<File>} history mirror files
          */

@@ -75,6 +75,7 @@ public class LayeredFileSafe {
 	}
 
 	/** Creates a new safe with the given number of storage slots per file.
+	 * This creates the storage directory if it does not exist.
 	 * 
 	 * @param dir File storage directory
 	 * @param days int number slots for daily copies
@@ -98,6 +99,11 @@ public class LayeredFileSafe {
 		}
 		if (monthsLimit > 0 && months >= monthsLimit) {
 			throw new IllegalArgumentException("illegal months value: " + months);
+		}
+		
+		// test safe directory
+		if (!Util.ensureDirectory(dir, null)) {
+			throw new IllegalArgumentException("invalid safe directory: " + dir);
 		}
 		
 		// create instance values
@@ -221,7 +227,7 @@ public class LayeredFileSafe {
 					if (i == nrSlots-1) {
 						slotFile(file, i).delete();
 						slotTime[i] = 0;
-						Log.log(8, "(LayeredFileSafe.analyse) removing last slot file");
+						Log.log(8, "(LayeredFileSafe.promote) removing last slot file");
 	
 					// otherwise move file to next slot position
 					// (current inhabitant of next slot gets deleted)
@@ -232,7 +238,7 @@ public class LayeredFileSafe {
 						File nextFile = slotFile(file, i+1);
 						nextFile.delete();
 						thisFile.renameTo(nextFile);
-						Log.log(8, "(LayeredFileSafe.analyse) renaming " + thisFile.getName() 
+						Log.log(8, "(LayeredFileSafe.promote) renaming " + thisFile.getName() 
 								+ " to " + nextFile.getName());
 					}
 					event = true;
@@ -248,7 +254,7 @@ public class LayeredFileSafe {
 					File target = slotFile(file, i);
 					Util.copyFile2(source, target, true);
 					event = true;
-					Log.log(8, "(LayeredFileSafe.analyse) drawn up file " + target.getName()); 
+					Log.log(8, "(LayeredFileSafe.promote) drawn up file " + target.getName()); 
 				}
 			}
 		} while (event);
@@ -290,7 +296,8 @@ public class LayeredFileSafe {
 	/** Creates a copy of the given file in the store system. The time-stamp
 	 * assigned to the stored file is TIME-NOW. TIME-NOW is by default the
 	 * current system time but can be a user set value with method 
-	 * 'setTimeNow()'. 
+	 * 'setTimeNow()'. A call to 'promote(file)' is implied after the file
+	 * has been stored.
 	 * <p>Note that only the last name of the filepath is considered for file
 	 * identity ('file.getName()'). Therefore it is in the responsibility of the
 	 * user to not enter various file identities with the same last name
@@ -391,11 +398,14 @@ public class LayeredFileSafe {
 	/** Returns a list of file copies in this store for the given cardinal
 	 * filepath. The separate list is sorted in descending order of the file 
 	 * time.
+	 * <p>The returned list may contain identical file copies under different
+	 * names. This list is for technical maintenance purposes. For a list of 
+	 * unique history files refer to "getHistory(File)".
 	 *  
 	 * @param file File cardinal filepath
 	 * @return {@code List<File>}
 	 */
-	List<File> getFiles (File file) {
+	public synchronized List<File> getFiles (File file) {
 		readFiles(file);
 		
 		// collect the filepaths which correspond to non-zero slot-times

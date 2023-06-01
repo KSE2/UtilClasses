@@ -39,6 +39,7 @@ import java.awt.print.PrinterException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Objects;
 import java.util.TimeZone;
 import java.util.Timer;
@@ -160,7 +161,8 @@ public class AmpleTextArea extends JTextArea implements MenuActivist {
 	      }
 	   }
 	
-	   setName( name );
+	   setName(name);
+	   setLocale(Locale.getDefault());
 	   addMouseListener( popupListener );
 	   getDocument().addUndoableEditListener( undoManager );
 	   getDocument().addDocumentListener(new DocListener());
@@ -183,9 +185,7 @@ public class AmpleTextArea extends JTextArea implements MenuActivist {
 		   }
 	   });
 	
-//	   setLineWrap( Options.isOptionSet( "editLineWrap" ) );
-	   setWrapStyleWord( true );
-//	   setFont( DisplayManager.getFont( "notes" ) );   
+	   setWrapStyleWord(true);
 	   Log.debug(10, "(AmpleTextArea.init) text font = " + getFont());
 	}
 	
@@ -411,25 +411,50 @@ public class AmpleTextArea extends JTextArea implements MenuActivist {
 	protected String getIntl (String token ) {
 		Objects.requireNonNull(token);
 		String h = "* " + token;
+		Locale locale = getLocale();
 		
-		if (token.equals( ActionNames.PASTE )) {
-			h = "Paste";
-		} else if (token.equals( ActionNames.COPY )) {
-			h = "Copy";
-		} else if (token.equals( ActionNames.CUT )) {
-			h = "Cut";
-		} else if (token.equals( ActionNames.DELETE )) {
-			h = "Delete";
-		} else if (token.equals( ActionNames.LINE_WRAP )) {
-			h = "Line Wrap";
-		} else if (token.equals( ActionNames.SELECT_ALL )) {
-			h = "Select All";
-		} else if (token.equals( ActionNames.PRINT )) {
-			h = "Print";
-		} else if (token.equals( "msg.ask.longlineswrap" )) {
-			h = "Apply Line-Wrap to improve rendering (recommended)?";
-		} else if (token.equals( "msg.fail.noexecutor" )) {
-			h = "There is no executor for the Print task!";
+		if (Locale.GERMAN.getLanguage().equals(locale.getLanguage())) {
+			if (token.equals( ActionNames.PASTE )) {
+				h = "Einfügen";
+			} else if (token.equals( ActionNames.COPY )) {
+				h = "Kopieren";
+			} else if (token.equals( ActionNames.CUT )) {
+				h = "Ausschneiden";
+			} else if (token.equals( ActionNames.DELETE )) {
+				h = "Löschen";
+			} else if (token.equals( ActionNames.LINE_WRAP )) {
+				h = "Zeilenumbruch";
+			} else if (token.equals( ActionNames.SELECT_ALL )) {
+				h = "Alles auswählen";
+			} else if (token.equals( ActionNames.PRINT )) {
+				h = "Drucken";
+			} else if (token.equals( "msg.ask.longlineswrap" )) {
+				h = "Zeilenumbruch anwenden für besseres Ergebnis? (empfohlen)";
+			} else if (token.equals( "msg.fail.noexecutor" )) {
+				h = "Es fehlt ein Executor für den Druckauftrag!";
+			}
+
+		// English is default language
+		} else {
+			if (token.equals( ActionNames.PASTE )) {
+				h = "Paste";
+			} else if (token.equals( ActionNames.COPY )) {
+				h = "Copy";
+			} else if (token.equals( ActionNames.CUT )) {
+				h = "Cut";
+			} else if (token.equals( ActionNames.DELETE )) {
+				h = "Delete";
+			} else if (token.equals( ActionNames.LINE_WRAP )) {
+				h = "Line Wrap";
+			} else if (token.equals( ActionNames.SELECT_ALL )) {
+				h = "Select All";
+			} else if (token.equals( ActionNames.PRINT )) {
+				h = "Print";
+			} else if (token.equals( "msg.ask.longlineswrap" )) {
+				h = "Apply Line-Wrap to improve rendering? (recommended)";
+			} else if (token.equals( "msg.fail.noexecutor" )) {
+				h = "There is no executor for the Print task!";
+			}
 		}
 		
 		return h;
@@ -569,9 +594,8 @@ public class AmpleTextArea extends JTextArea implements MenuActivist {
 	
 	   // printing the text
 	   act = extractActionFromList(alist, ActionNames.PRINT);
-	   if (act != null && executor != null) {
-		   item = makeMenuItem( ActionNames.PRINT );
-		   menu.add( item );
+	   if (act != null) {
+		   menu.add( act );
 	   }
 	   
 	   act = extractActionFromList(alist, ActionNames.SELECT_ALL);
@@ -661,20 +685,19 @@ public class AmpleTextArea extends JTextArea implements MenuActivist {
 	   if ( !getLineWrap() ) {
 	      // check for cut lines
 	      int lines = getLineCount();
-	      for ( int i = 0; i < lines; i++ ) {
+	      for (int i = 0; i < lines; i++) {
 	         try { length = getLineEndOffset(i) - getLineStartOffset(i); }
 	         catch ( BadLocationException e1 ) 
 	         { length = 0; }
 	         hasLongLine |= length > 80;
-	         if ( hasLongLine )
-	            break;
+	         if (hasLongLine) break;
 	      }
 	      
 	      // ask user for line wrapping if we have a long line
 	      name = getName() == null ? "?" : getName();
-	      hstr = getIntl( "msg.ask.longlineswrap" );
-	      hstr = Util.substituteText( hstr, "$name", name );
-	      if ( hasLongLine && GUIService.userConfirm( owner, hstr ) ) {
+	      hstr = getIntl("msg.ask.longlineswrap");
+	      hstr = Util.substituteText(hstr, "$name", name);
+	      if (hasLongLine && GUIService.userConfirm(owner, hstr)) {
 	         setLineWrap( true );
 	      }
 	   }
@@ -989,7 +1012,7 @@ public class AmpleTextArea extends JTextArea implements MenuActivist {
 		public static final String PRINT = "menu.edit.print"; 
 		public static final String SELECT_ALL = "menu.edit.selectall";
 	}
-	
+
 //	/**
 //		 * Renders a popup menu for the context of this text area
 //		 * including actual options of the UNDO manager.
