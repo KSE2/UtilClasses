@@ -2123,6 +2123,39 @@ public class Util {
 		return buf;
 	}
 
+	/** Returns a new String array which is the concatenation of the given 
+	 * arrays a1 and a2. The length of the result is a1.length + a2.length.
+	 * 
+	 * @param a1 String[]
+	 * @param a2 String[]
+	 * @return String[]
+	 */
+	public static String[] concatArrays (String[] a1, String[] a2) {
+		String[] buf = new String[a1.length + a2.length];
+		System.arraycopy(a1, 0, buf, 0, a1.length);
+		System.arraycopy(a2, 0, buf, a1.length, a2.length);
+		return buf;
+	}
+
+	public static Object[] concatArrays (Object[] a1, Object[] a2) {
+		Object[] buf = new Object[a1.length + a2.length];
+		System.arraycopy(a1, 0, buf, 0, a1.length);
+		System.arraycopy(a2, 0, buf, a1.length, a2.length);
+		return buf;
+	}
+
+	/** Whether all object elements of the given array are null.
+	 * 
+	 * @param arr Object[]
+	 * @return boolean true = all positions null, false = some position not null
+	 */
+	public static boolean isNullArray (Object[] arr) {
+		for (Object o : arr) {
+			if (o != null) return false;
+		}
+		return true;
+	}
+	
 	/** Returns a CRC_32 value over the given byte array.
 	 * Returns zero if the argument is null.
 	 * 

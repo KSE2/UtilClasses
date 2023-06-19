@@ -153,14 +153,14 @@ private void init (MessageType mType) {
    // body panel (base)
    dialogPanel = new MessageContentPanel() ;
    setMessageType( mType );
-   setPerformBlock( new MessagePerformBlock() );
+   setPerformBlock(new MessagePerformBlock());
 }
 
 /** Sets the message display type for this dialog.
  * 
  * @param type <code>MessageType</code> new message type
  */
-public void setMessageType ( MessageType type ) {
+public void setMessageType (MessageType type) {
    // switch coloured panels according to user setting
    if (!infosColored) {
 	   dialogPanel.setInfoBgdColor(null);

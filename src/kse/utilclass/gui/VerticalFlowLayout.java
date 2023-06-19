@@ -40,8 +40,8 @@ import java.awt.LayoutManager;
  * @author Anonymus
  * @author Wolfgang Keller
  */
-public class VerticalFlowLayout implements LayoutManager 
-{
+public class VerticalFlowLayout implements LayoutManager {
+	
    public static final int LEFT = 0;
    public static final int CENTER = 1;
    public static final int RIGHT = 2;
@@ -79,22 +79,22 @@ public class VerticalFlowLayout implements LayoutManager
    * Sets the Vgap of this layout manager. 
    * @param v Vgap in pixels
    */
-  public void setVgap ( int v )
-  {
-     this.vgap = v;
+  public void setVgap ( int v ) {
+     this.vgap = Math.max( 0, v );
   }
 
   /**
    * addLayoutComponent method comment.
    */
+  @Override
   public void addLayoutComponent(String name, Component comp) {
   } 
 
   /**
    * layoutContainer method comment.
    */
-  public void layoutContainer ( Container parent ) 
-  {
+  @Override
+  public void layoutContainer ( Container parent ) {
      Component cps[];
      Insets insets;
      int x, y, w, h, i, stH, newH, numVComp;
@@ -107,22 +107,20 @@ public class VerticalFlowLayout implements LayoutManager
      
      numVComp = 0;
      stH = 0;
-     if ( vfill )
-     {
-        for ( Component c : cps ) 
-           if ( c.isVisible() )
+     if ( vfill ) {
+        for ( Component c : cps ) {
+           if ( c.isVisible() ) {
               numVComp++;
+           }
+        }
         stH = numVComp > 0 ? (h - (numVComp-1)*vgap) / numVComp : 0;   
      }
      
-     for ( Component c : cps ) 
-     {
-        if (c.isVisible()) 
-        {
+     for ( Component c : cps ) {
+        if (c.isVisible()) {
            Dimension d = c.getPreferredSize();
            x = insets.left;
-           if ( !hfill )
-           {
+           if ( !hfill ) {
               if ( alignment == RIGHT )
                  x += w - d.width;
               else if ( alignment == CENTER )
@@ -140,15 +138,14 @@ public class VerticalFlowLayout implements LayoutManager
   /**
    * minimumLayoutSize method comment.
    */
-  public Dimension minimumLayoutSize(Container parent) 
-  {
+  @Override
+  public Dimension minimumLayoutSize(Container parent) {
     Insets insets = parent.getInsets();
     Component[] cps = parent.getComponents();
     int maxWidth = 0;
     int totalHeight = 0;
     int numComponents = 0;
-    for ( Component c : cps ) 
-    {
+    for ( Component c : cps ) {
       if (c.isVisible()) {
         Dimension cd = c.getMinimumSize();
         maxWidth = Math.max(maxWidth, cd.width);
@@ -158,23 +155,22 @@ public class VerticalFlowLayout implements LayoutManager
     } 
     Dimension td = new Dimension(maxWidth + insets.left + insets.right, 
                                  totalHeight + insets.top + insets.bottom 
-                                 + vgap * numComponents);
+                                 + vgap * Math.max(0, numComponents-1));
     return td;
   } 
 
   /**
    * preferredLayoutSize method comment.
    */
-  public Dimension preferredLayoutSize(Container parent) 
-  {
+  @Override
+  public Dimension preferredLayoutSize(Container parent) {
     Insets insets = parent.getInsets();
     Component[] cps = parent.getComponents();
     int maxWidth = 0;
     int totalHeight = 0;
     int numComponents = 0;
     
-    for ( Component c : cps ) 
-    {
+    for ( Component c : cps ) {
       if (c.isVisible()) {
         Dimension cd = c.getPreferredSize();
         maxWidth = Math.max(maxWidth, cd.width);
@@ -184,18 +180,18 @@ public class VerticalFlowLayout implements LayoutManager
     } 
     Dimension td = new Dimension(maxWidth + insets.left + insets.right, 
                                  totalHeight + insets.top + insets.bottom 
-                                 + vgap * Math.max( 0, numComponents-1));
+                                 + vgap * Math.max(0, numComponents-1));
     return td;
   } 
 
   /**
    * removeLayoutComponent method comment.
    */
+  @Override
   public void removeLayoutComponent(Component comp) {
   } 
 
-  public void setAlignment ( int align )
-  {
+  public void setAlignment ( int align ) {
      if ( align == RIGHT )
         alignment = RIGHT;
      else if ( align == CENTER )
@@ -204,13 +200,11 @@ public class VerticalFlowLayout implements LayoutManager
         alignment = LEFT;
   }
   
-  public void setHorizontalFill ( boolean v )
-  {
-    hfill = v;
+  public void setHorizontalFill ( boolean v ) {
+     hfill = v;
   }
   
-  public void setVerticalFill ( boolean v )
-  {
-    vfill = v;
+  public void setVerticalFill ( boolean v ) {
+     vfill = v;
   }
 }
