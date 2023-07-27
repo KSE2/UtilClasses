@@ -172,8 +172,7 @@ public synchronized void reset () throws IOException {
 /** Causes this stream to translate its start address in the file.
  * All subsequent operations work with reference to the new value.
  * 
- * @param chunk {@code Chunk}
- * @param delta long shift delta for chunk
+ * @param delta long shift delta
  * @throws IllegalArgumentException if delta is out of range
  * @throws IOException 
  */

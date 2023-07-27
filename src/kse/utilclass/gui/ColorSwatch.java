@@ -1,7 +1,7 @@
 package kse.utilclass.gui;
 
 /*
-*  File: MessageDialog.java
+*  File: ColorSwatch.java
 * 
 *  Project JUtilClasses
 *  @author Christopher Bach

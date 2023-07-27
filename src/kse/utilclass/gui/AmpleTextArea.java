@@ -8,7 +8,7 @@ package kse.utilclass.gui;
 *  @author Wolfgang Keller
 *  Created 
 * 
-*  Copyright (c) 2022 by Wolfgang Keller, Munich, Germany
+*  Copyright (c) 2023 by Wolfgang Keller, Munich, Germany
 * 
 This program is not public domain software but copyright protected to the 
 author(s) stated above. However, you can use, redistribute and/or modify it 
@@ -36,7 +36,9 @@ import java.awt.event.KeyEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.print.PrinterException;
+import java.text.DateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
@@ -85,13 +87,15 @@ import kse.utilclass.misc.Util;
  * <br>3. keystroke support with these (additional) assignments: CTRL-W 
  * (select-word), CTRL-L (select line), CTRL-P (select paragraph), 
  * CTRL-Z (undo), CTRL-Y, CTRL-SHIFT-Z (redo), CTRL-D (current date), 
- * CTRL-T (current time), CTRL-U (universal date and time), F1 (help), 
+ * CTRL-T (current time), CTRL-U (universal date and time), CTRL-A (current
+ * date localised), CTRL-B (current time localised)
  * CTRL-PLUS (increase font size), CTRL-MINUS (decrease font size). 
  * 
  * <p>With {@code getMenuActions()} the list of available menu actions can be
  * obtained and modified. This is the way to add individual items to the 
- * popup menu of this component. The F1 key is assigned to a "Help" action
- * with command-key "menu.help"; this class does not define such an action.
+ * popup menu of this component. This class does not define a help action
+ * but the user can add such an action with ACTION_COMMAND_KEY = 
+ * ActionNames.HELP.
  */
 
 public class AmpleTextArea extends JTextArea implements MenuActivist {
@@ -103,7 +107,12 @@ public class AmpleTextArea extends JTextArea implements MenuActivist {
    private List<Action> menuActions;
    private ATA_UndoManager undoManager = new ATA_UndoManager();
    private PopupListener popupListener = new PopupListener();
-   private Executor executor;
+   private Executor executor = new Executor() {
+	   @Override
+	   public void execute(Runnable r) {
+		   r.run();
+	   }
+   };
    
    private Window owner;
    private Dimension selection;
@@ -189,6 +198,36 @@ public class AmpleTextArea extends JTextArea implements MenuActivist {
 	   Log.debug(10, "(AmpleTextArea.init) text font = " + getFont());
 	}
 	
+//    public void addPropertyChangeListener (PropertyChangeListener listener) {
+//       synchronized (support) {
+//          List<?> list = Arrays.asList(support.getPropertyChangeListeners());
+//          if (!list.contains(listener)) {
+//             support.addPropertyChangeListener(listener);
+//          }
+//       }
+//	}
+//	   
+//    public void addPropertyChangeListener (String propertyName, PropertyChangeListener listener) {
+//       synchronized (support) {
+//          List<?> list = Arrays.asList(support.getPropertyChangeListeners(propertyName));
+//          if (!list.contains(listener)) {
+//             support.addPropertyChangeListener(propertyName, listener);
+//          }
+//       }
+//    }
+//   
+//   public void removePropertyChangeListener (PropertyChangeListener listener) {
+//      synchronized (support) {
+//         support.removePropertyChangeListener(listener);
+//      }
+//   }
+//   
+//   public void removePropertyChangeListener (String propertyName, PropertyChangeListener listener) {
+//      synchronized (support) {
+//         support.removePropertyChangeListener(propertyName, listener);
+//      }
+//   }
+	   
 	private void modifyKeystrokes () {
 	   Keymap parent, map;
 	   Action action;
@@ -226,21 +265,29 @@ public class AmpleTextArea extends JTextArea implements MenuActivist {
 	   key = KeyStroke.getKeyStroke( KeyEvent.VK_Y, InputEvent.CTRL_MASK );
 	   map.addActionForKeyStroke(key, redoAction );
 	      
-	   // add CTRL-D: insert current date (local) action 
+	   // add CTRL-D: insert current date (local tm, univ expr) action 
 	   key = KeyStroke.getKeyStroke( KeyEvent.VK_D, InputEvent.CTRL_MASK );
 	   map.addActionForKeyStroke(key,  new ATA_Action( "keystroke.CTRL-D" ));
 	
-	   // add CTRL-T: insert current time (local) action 
+	   // add CTRL-T: insert current time (local tm, univ expr) action 
 	   key = KeyStroke.getKeyStroke( KeyEvent.VK_T, InputEvent.CTRL_MASK );
 	   map.addActionForKeyStroke(key,  new ATA_Action( "keystroke.CTRL-T" ));
+	
+	   // add CTRL-A: insert current date (local tm, local expr) action 
+	   key = KeyStroke.getKeyStroke( KeyEvent.VK_A, InputEvent.CTRL_MASK );
+	   map.addActionForKeyStroke(key,  new ATA_Action( "keystroke.CTRL-A" ));
+	
+	   // add CTRL-B: insert current time (local tm, local expr) action 
+	   key = KeyStroke.getKeyStroke( KeyEvent.VK_B, InputEvent.CTRL_MASK );
+	   map.addActionForKeyStroke(key,  new ATA_Action( "keystroke.CTRL-B" ));
 	
 	   // add CTRL-U: insert current date+time (UT) action 
 	   key = KeyStroke.getKeyStroke( KeyEvent.VK_U, InputEvent.CTRL_MASK );
 	   map.addActionForKeyStroke(key, new ATA_Action( "keystroke.CTRL-U" ));
 	
-	   // add CTRL-U: insert current date+time (UT) action 
-	   key = KeyStroke.getKeyStroke( KeyEvent.VK_F1, 0 );
-	   map.addActionForKeyStroke(key, new ATA_Action( "menu.help"));
+//	   // add F1: Help - user supplied) action 
+//	   key = KeyStroke.getKeyStroke( KeyEvent.VK_F1, 0 );
+//	   map.addActionForKeyStroke(key, new ATA_Action( ActionNames.HELP ));
 	
 	   // add CTRL-PLUS: use larger font action 
 	   key = KeyStroke.getKeyStroke( KeyEvent.VK_PLUS, InputEvent.CTRL_MASK );
@@ -428,6 +475,8 @@ public class AmpleTextArea extends JTextArea implements MenuActivist {
 				h = "Alles auswählen";
 			} else if (token.equals( ActionNames.PRINT )) {
 				h = "Drucken";
+			} else if (token.equals( ActionNames.HELP )) {
+				h = "Hilfe";
 			} else if (token.equals( "msg.ask.longlineswrap" )) {
 				h = "Zeilenumbruch anwenden für besseres Ergebnis? (empfohlen)";
 			} else if (token.equals( "msg.fail.noexecutor" )) {
@@ -450,6 +499,8 @@ public class AmpleTextArea extends JTextArea implements MenuActivist {
 				h = "Select All";
 			} else if (token.equals( ActionNames.PRINT )) {
 				h = "Print";
+			} else if (token.equals( ActionNames.HELP )) {
+				h = "Help";
 			} else if (token.equals( "msg.ask.longlineswrap" )) {
 				h = "Apply Line-Wrap to improve rendering? (recommended)";
 			} else if (token.equals( "msg.fail.noexecutor" )) {
@@ -463,10 +514,13 @@ public class AmpleTextArea extends JTextArea implements MenuActivist {
 	/** Returns a list with edit actions available in this editor for the 
 	 * purpose of creating a menu or a popup menu. The elements of the list are 
 	 * stable during a program session, i.e. they can be persistently modified. 
-	 * Also the list itself can be modified.
+	 * Also the list itself can be modified. This list does not represent set
+	 * and order of the actions which appear in the popup menu, instead the 
+	 * menu is created by internal rules; it forms the super-set of actions
+	 * from which the menu is created.
 	 * <p>The list contains at least the actions of the standard action names 
-	 * defined in this interface with Undo and Redo at the leading places. (Undo
-	 * and Redo are fix elements even when there is nothing to undo or redo.)
+	 * defined in this interface, including Undo and Redo. All user added 
+	 * actions are brought to display in the sequence of their index values.
 	 * 
 	 * @return {@code List<Action>}
 	 */
@@ -493,6 +547,16 @@ public class AmpleTextArea extends JTextArea implements MenuActivist {
 		return null;
 	}
 	
+	public void increaseFont () {
+  	   Font font = getFont();
+  	   setFont( font.deriveFont(font.getSize2D() + 1) );
+	}
+	
+	public void decreaseFont () {
+	  	   Font font = getFont();
+	  	   setFont( font.deriveFont(Math.max(4, font.getSize2D() - 1)) );
+		}
+		
 	/** Returns the editor action with the given command token from the 
 	 * given action list or null if such an action is not defined.
 	 * The list is reduced by the action returned.
@@ -532,18 +596,24 @@ public class AmpleTextArea extends JTextArea implements MenuActivist {
 	   JMenu menu = new JMenu();
 	   JMenuItem item;
 	
-	   if ( undoManager.canUndo() & isEditable()) {
-	      item = new JMenuItem( new UndoAction() );
-	      item.setAccelerator( KeyStroke.getKeyStroke(
-	            KeyEvent.VK_Z, ActionEvent.CTRL_MASK) );
-	      menu.add( item );
-	   }
-	   
-	   if ( undoManager.canRedo()  & isEditable()) {
-	      item = new JMenuItem( new RedoAction() );
-	      item.setAccelerator( KeyStroke.getKeyStroke(
-	            KeyEvent.VK_Y, ActionEvent.CTRL_MASK) );
-	      menu.add( item );
+	   List<Action> alist = new ArrayList<Action>(getMenuActions());
+	   boolean canShowUndo = extractActionFromList(alist, ActionNames.UNDO) != null |
+			                 extractActionFromList(alist, ActionNames.REDO) != null;
+			   
+	   if (canShowUndo) {
+		   if ( undoManager.canUndo() & isEditable()) {
+		      item = new JMenuItem( new UndoAction() );
+		      item.setAccelerator( KeyStroke.getKeyStroke(
+		            KeyEvent.VK_Z, ActionEvent.CTRL_MASK) );
+		      menu.add( item );
+		   }
+		   
+		   if ( undoManager.canRedo()  & isEditable()) {
+		      item = new JMenuItem( new RedoAction() );
+		      item.setAccelerator( KeyStroke.getKeyStroke(
+		            KeyEvent.VK_Y, ActionEvent.CTRL_MASK) );
+		      menu.add( item );
+		   }
 	   }
 	
 	   int menuSize = menu.getMenuComponentCount();
@@ -551,9 +621,6 @@ public class AmpleTextArea extends JTextArea implements MenuActivist {
 	      menu.addSeparator();
 	   }
 	   
-	   List<Action> alist = new ArrayList<Action>(getMenuActions());
-	   extractActionFromList(alist, ActionNames.UNDO);
-	   extractActionFromList(alist, ActionNames.REDO);
 	   
 	   // the standard CUT action (clipboard)
 	   Action act = extractActionFromList(alist, ActionNames.CUT);
@@ -603,6 +670,8 @@ public class AmpleTextArea extends JTextArea implements MenuActivist {
 		   menu.add(act);
 	   }
 	   
+	   act = extractActionFromList(alist, ActionNames.HELP);
+	   
 	   // user defined actions
 	   if (!alist.isEmpty()) {
 		   if (menu.getMenuComponentCount() > menuSize) {
@@ -611,6 +680,12 @@ public class AmpleTextArea extends JTextArea implements MenuActivist {
 		   for (Action a : alist) {
 			   menu.add(a);
 		   }
+	   }
+
+	   // add at bottom: HELP action (user supplied)
+	   if (act != null) {
+		   menu.addSeparator();
+		   menu.add(act);
 	   }
 	   return menu;
 	}
@@ -627,6 +702,10 @@ public class AmpleTextArea extends JTextArea implements MenuActivist {
 		return menu.getPopupMenu();
 	}
 	
+	/** Sets the owner for occasional message dialogs for the user.
+	 *  
+	 * @param owner Window
+	 */
 	public void setDialogOwner (Window owner) {
 	   this.owner = owner; 
 	}
@@ -664,21 +743,18 @@ public class AmpleTextArea extends JTextArea implements MenuActivist {
 	}
 	
 	/** Sets the executor for tasks in separate threads for this element. 
+	 * The executor is currently used for the printing job.
 	 * 
 	 * @param e {@code Executor}
 	 */
 	public void setExecutor (Executor e) {
+		Objects.requireNonNull(e);
 		executor = e;
 	}
 	
 	public void startPrinting () {
 	   String hstr, name;
 	   int length;
-	   if ( executor == null ) {
-		   hstr = getIntl("msg.fail.noexecutor");
-		   GUIService.failureMessage(hstr);
-		   return;
-	   }
 	   
 	   // set Attribute "LineWrap" to user option
 	   boolean hasLongLine = false;
@@ -743,13 +819,6 @@ public class AmpleTextArea extends JTextArea implements MenuActivist {
 	         this.putValue(NAME, name);
 	   }
 	
-	//   public ATA_Action ( String command, String name, int mnemonic )
-	//   {
-	//      this( command, name );
-	//      if ( mnemonic > 0 )
-	//         this.putValue( MNEMONIC_KEY, mnemonic );
-	//   }
-	   
 //	   /** The command defined on this action or null if none was defined.
 //	    * 
 //	    * @return String or null
@@ -795,34 +864,51 @@ public class AmpleTextArea extends JTextArea implements MenuActivist {
 	      } else if ( cmd.equals( ActionNames.PRINT ) ) {
 	         startPrinting();
 
+//	      } else if ( cmd.equals( ActionNames.HELP ) ) {
+//		     for (Action a : menuActions) {
+//		    	 String acm = (String) a.getValue(ACTION_COMMAND_KEY);
+//		    	 if (ActionNames.HELP.equals(acm)) {
+//		    		 a.actionPerformed(e);
+//		    		 return;
+//		    	 }
+//		     }
+
 	      } else if ( cmd.equals( "keystroke.CTRL-U" ) ) {
 	         String dtext = Util.standardTimeString( System.currentTimeMillis(),
 	               TimeZone.getTimeZone( "UTC" )).concat( " UT " );
-	         AmpleTextArea.this.insert( dtext, AmpleTextArea.this.getCaretPosition() );
+	         insert( dtext, getCaretPosition() );
 
 	      } else if ( cmd.equals( "keystroke.CTRL-D" ) ) {
 	         String dtext = Util.standardTimeString( System.currentTimeMillis() );
 	         dtext = dtext.substring( 0, 11 );
-	         AmpleTextArea.this.insert( dtext, AmpleTextArea.this.getCaretPosition() );
+	         insert( dtext, getCaretPosition() );
 
 	      } else if ( cmd.equals( "keystroke.CTRL-T" ) ) {
 	         String dtext = Util.standardTimeString( System.currentTimeMillis() );
 	         dtext = dtext.substring( 11 ).concat( " " );
-	         AmpleTextArea.this.insert( dtext, AmpleTextArea.this.getCaretPosition() );
+	         insert( dtext, getCaretPosition() );
+
+	      } else if ( cmd.equals( "keystroke.CTRL-A" ) ) {
+		     Date date = new Date( System.currentTimeMillis() );
+		     String dtext = DateFormat.getDateInstance().format(date).concat( " " );
+	         insert( dtext, getCaretPosition() );
+
+	      } else if ( cmd.equals( "keystroke.CTRL-B" ) ) {
+		     Date date = new Date( System.currentTimeMillis() );
+		     String dtext = DateFormat.getTimeInstance().format(date).concat( " " );
+	         insert( dtext, getCaretPosition() );
 
 	      } else if ( cmd.equals( "keystroke.CTRL-PLUS" ) ) {
-	    	  Font font = AmpleTextArea.this.getFont();
-	    	  AmpleTextArea.this.setFont( font.deriveFont(font.getSize2D() + 1) );
+	    	  increaseFont();
 
 	      } else if ( cmd.equals( "keystroke.CTRL-MINUS" ) ) {
-	    	  Font font = AmpleTextArea.this.getFont();
-	    	  AmpleTextArea.this.setFont( font.deriveFont( Math.max(4, font.getSize2D() - 1)) );
+	    	  decreaseFont();
 	      }
 
 	   // uncaught exception during any command (protects the caller) 
 	   } catch ( Exception e1 ) {
 	      e1.printStackTrace();
-	      GUIService.failureMessage( owner, "Unable to excute command: ".concat( cmd ), e1 );
+	      GUIService.failureMessage( owner, "Unable to excute command: ".concat(cmd), e1 );
 	   }
 	   }
 
@@ -1011,6 +1097,7 @@ public class AmpleTextArea extends JTextArea implements MenuActivist {
 		public static final String LINE_WRAP = "menu.edit.linewrap";
 		public static final String PRINT = "menu.edit.print"; 
 		public static final String SELECT_ALL = "menu.edit.selectall";
+		public static final String HELP = "menu.edit.help"; 
 	}
 
 //	/**

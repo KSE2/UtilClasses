@@ -7,7 +7,7 @@ package kse.utilclass.gui;
 *  @author Wolfgang Keller et al.
 *  Created 
 * 
-*  Copyright (c) 2022 by Wolfgang Keller, Munich, Germany
+*  Copyright (c) 2023 by Wolfgang Keller, Munich, Germany
 * 
 This program is not public domain software but copyright protected to the 
 author(s) stated above. However, you can use, redistribute and/or modify it 
@@ -29,7 +29,6 @@ import java.awt.Dimension;
 import java.awt.Insets;
 import java.awt.LayoutManager;
 
-import kse.utilclass.misc.Log;
 import kse.utilclass.misc.Util;
 
 /**
@@ -265,8 +264,8 @@ public class BoxedFlowLayout implements LayoutManager {
              }
         	 
              c.setBounds(x, y, w, h);
-             Log.debug(1, "(BoxedFlowLayout.layoutContainer) componant bounds := " + x + ", " + y +
-            		      ", " + w + ", " + h);
+//             Log.debug(10, "(BoxedFlowLayout.layoutContainer) componant bounds := " + x + ", " + y +
+//            		      ", " + w + ", " + h);
          }
          count++;
      }

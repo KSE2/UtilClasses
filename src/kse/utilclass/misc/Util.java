@@ -7,7 +7,7 @@ package kse.utilclass.misc;
 *  @author Wolfgang Keller
 *  Created 
 * 
-*  Copyright (c) 2022 by Wolfgang Keller, Munich, Germany
+*  Copyright (c) 2023 by Wolfgang Keller, Munich, Germany
 * 
 This program is not public domain software but copyright protected to the 
 author(s) stated above. However, you can use, redistribute and/or modify it 
@@ -24,6 +24,7 @@ Boston, MA 02111-1307, USA, or go to http://www.gnu.org/copyleft/gpl.html.
 */
 
 import java.awt.Dimension;
+import java.awt.Font;
 import java.awt.Point;
 import java.awt.Rectangle;
 import java.awt.Toolkit;
@@ -50,6 +51,7 @@ import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
 import java.nio.CharBuffer;
 import java.nio.channels.SeekableByteChannel;
+import java.nio.charset.Charset;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.text.DecimalFormatSymbols;
@@ -1448,8 +1450,6 @@ public class Util {
 	 * text. 
 	 * 
 	 * @param text String source text
-	 * @param headed boolean if true the resulting text will start with 
-	 * 			{@code '<html>'}
 	 * @return String translated text
 	 */
 	public static String htmlEncoded ( String text ) {
@@ -1501,6 +1501,63 @@ public class Util {
        return b.toString();
 	}
 
+	private static final BitSet URI_UNRESERVED_CHARS;
+	static {
+		BitSet bs  = new BitSet(128);
+		bs.set('A', 'Z');
+		bs.set('a', 'z');
+		bs.set('0', '9');
+		bs.set('-');
+		bs.set('.');
+		bs.set('_');
+		bs.set('~');
+		URI_UNRESERVED_CHARS = bs;
+	}
+	
+	/** Returns a translation of the given text into an URI-encoded version, 
+	 * or null iff the argument was null. The translated version contains 
+	 * characters w/ code-points outside of the core-set for URI expressions
+	 * in an URI-encoded form ("percentage encoding").
+	 * <p>The given character-set is used for the encoding of translated 
+	 * characters. The default set is UTF-8; common alternatives are 
+	 * ISO-8859-1 or ISO-8859-15.
+	 * <p>NOTE: Such a function should be used for common text which is 
+	 * injected into an URI-phrase; it should not be used for the URI-phrase
+	 * in total as this would destroy the URI's syntactical shape.  
+	 * 
+	 * @param text String source text
+	 * @param charset String name of character set to encode invalid
+	 *                characters; null for default (UTF-8)
+	 * @return String translated text
+	 */
+	public static String uriEncoded (String text, String charset) {
+//		for (int i = 0; i < 128; i++) {
+//			System.out.println("   " + i + "  ->  " + (char)i);
+//		}
+		
+		if (text == null) return null;
+		if (text.isEmpty()) return text;
+		if (charset == null) charset = "UTF-8"; 
+		Charset cs = Charset.forName(charset);
+		StringBuffer buf = new StringBuffer(text.length());
+		char[] ca = new char[1];
+		
+		// translate
+		for (char c : text.toCharArray()) {
+			if (!URI_UNRESERVED_CHARS.get(c)) {
+				ca[0] = c;
+				ByteBuffer bytes = cs.encode(new String(ca));
+				while (bytes.hasRemaining()) {
+					buf.append('%');
+					buf.append(Util.byteToHex(bytes.get()));
+				}
+			} else {
+				buf.append(c);
+			}
+		}
+		return buf.toString();
+	}
+	
 	/** Returns the delta in milliseconds between the given time value and
 	 * the current time.
 	 * 
@@ -2354,6 +2411,57 @@ public class Util {
 	  }
 	  return hstr + out;
   }
+	
+	/** Encodes the identity of the given font so that the result can serve as
+	 * an input to the static method 'Font.decode()'.
+	 * 
+	 * @param f Font
+	 * @return String simple font serialisation
+	 */
+	public static String encodeFont (Font f) {
+		String style = "PLAIN";
+		switch (f.getStyle()) {
+		case Font.BOLD: style = "BOLD"; break; 
+		case Font.ITALIC: style = "ITALIC"; break; 
+		case Font.BOLD + Font.ITALIC: style = "BOLDITALIC"; break; 
+		}
+		String code = f.getFamily() + "-" + style + "-" + f.getSize();
+		return code;
+	}
+
+	/** Returns a possibly modified version of the input text where all lines
+	 * (separated by '\n') are removed which start with the given marker
+	 * expression. A null marker returns the given text as is.
+	 *  
+	 * @param text String input text
+	 * @param marker String comment marker at start of line, may be null
+	 * @return String modified text
+	 */
+	public static String removeComments (String text, String marker) {
+		Objects.requireNonNull(text, "text is null");
+		if (marker == null || marker.isEmpty() || text.isEmpty() || 
+			text.indexOf(marker) == -1) return text;
+		String[] arr = text.split("\n", -1);
+		
+		// reduce for comment lines
+		for (int i = 0; i < arr.length; i++) {
+			if (arr[i].startsWith(marker)) {
+				arr[i] = null;
+			}
+		}
+		
+		// recompile text
+		StringBuffer buf = new StringBuffer(text.length());
+		for (String s : arr) {
+			if (s != null) {
+				buf.append(s);
+				if (s != arr[arr.length-1]) {
+					buf.append('\n');
+				}
+			}
+		}
+		return buf.toString();
+	}
 	
 }
 

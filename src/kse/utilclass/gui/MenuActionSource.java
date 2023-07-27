@@ -1,7 +1,7 @@
 package kse.utilclass.gui;
 
 /*
-*  File: AbstractByteChannel.java
+*  File: MenuActionSource.java
 * 
 *  Project JUtilClasses
 *  @author Wolfgang Keller

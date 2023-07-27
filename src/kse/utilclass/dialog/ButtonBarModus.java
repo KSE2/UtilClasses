@@ -7,7 +7,7 @@ package kse.utilclass.dialog;
 *  @author Wolfgang Keller
 *  Created 
 * 
-*  Copyright (c) 2022 by Wolfgang Keller, Munich, Germany
+*  Copyright (c) 2023 by Wolfgang Keller, Munich, Germany
 * 
 This program is not public domain software but copyright protected to the 
 author(s) stated above. However, you can use, redistribute and/or modify it 
@@ -24,17 +24,17 @@ Boston, MA 02111-1307, USA, or go to http://www.gnu.org/copyleft/gpl.html.
 */
 
 public enum ButtonBarModus {
+	
 	NONE,
 	SINGLE,
 	DOUBLE,
 	TRIPLE,
 	OK,
 	CONTINUE,
-	BREAK, // new
+	BREAK,
 	YES_NO,
 	OK_BREAK,
 	CONTINUE_BREAK,
 	YES_NO_BREAK;
-	
 	
 }

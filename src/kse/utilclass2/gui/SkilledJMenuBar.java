@@ -1,7 +1,7 @@
 package kse.utilclass2.gui;
 
 /*
-*  File: AbstractByteChannel.java
+*  File: SkilledJMenuBar.java
 * 
 *  Project JUtilClasses
 *  @author Wolfgang Keller

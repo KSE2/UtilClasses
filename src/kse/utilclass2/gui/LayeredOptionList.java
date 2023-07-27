@@ -223,6 +223,7 @@ private static class CheckListRenderer extends JPanel implements ListCellRendere
       
    }
    
+   @Override
    public Component getListCellRendererComponent(
          JList list, Object value, int index,
          boolean isSelected, boolean hasFocus) {
@@ -291,10 +292,7 @@ public boolean isPreciseHit () {
 /** Sets whether a check-box has to be precisely hit by a mouse click in order
  *  to trigger an action. If this is set to false, a mouse click anywhere in 
  *  the display area of an element leads to button action.  Default value
- * is <b>false</b>.
- * 
- * @return boolean true == hit precisely; 
- *                 false == hit anywhere in element display
+ *  is <b>false</b>.
  */
 public void setPreciseHit (boolean preciseHit) {
    this.preciseHit = preciseHit;

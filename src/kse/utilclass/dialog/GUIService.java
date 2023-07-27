@@ -7,7 +7,7 @@ package kse.utilclass.dialog;
 *  @author Wolfgang Keller
 *  Created 
 * 
-*  Copyright (c) 2022 by Wolfgang Keller, Munich, Germany
+*  Copyright (c) 2023 by Wolfgang Keller, Munich, Germany
 * 
 This program is not public domain software but copyright protected to the 
 author(s) stated above. However, you can use, redistribute and/or modify it 
@@ -39,7 +39,9 @@ import javax.swing.SwingUtilities;
 
 import kse.utilclass.dialog.MessageDialog.MessageType;
 
-
+/** A GUI message service with dialogs depending on class {@code GSDialog}.
+ *  
+ */
 public class GUIService {
 	/** Window used as the applications main frame. This is used
 	 * for display of dialog of this service where no other parent
@@ -184,8 +186,6 @@ public class GUIService {
 	 *        frame is used
 	 * @param title String dialog title; if <b>null</b> a standard
 	 * @param text String message text; if <b>null</b> a standard 
-	 * @param e {@code Throwable} if not <b>null</b> this exception is reported 
-	 *        in the dialog 
 	 */ 
 	public static void failureMessage (Component owner, String title, String text) {
 		failureMessage(owner, title, text, null);

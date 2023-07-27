@@ -7,7 +7,7 @@ package kse.utilclass.io;
 *  @author Wolfgang Keller
 *  Created 
 * 
-*  Copyright (c) 2022 by Wolfgang Keller, Munich, Germany
+*  Copyright (c) 2023 by Wolfgang Keller, Munich, Germany
 * 
 This program is not public domain software but copyright protected to the 
 author(s) stated above. However, you can use, redistribute and/or modify it 
@@ -104,7 +104,7 @@ public class IOService {
 	 * becomes available or it gets interrupted.
 	 * 
 	 * @param object T object to be marshalled
-	 * @param out File output file receiving the marshalled XML content   
+	 * @param outFile File output file receiving the marshalled XML content   
 	 * @throws JAXBException if something goes wrong during marshalling
 	 * @throws IOException 
 	 */

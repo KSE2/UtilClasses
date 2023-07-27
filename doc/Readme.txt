@@ -1,11 +1,12 @@
 Project UTIL-CLASSES
 
-Util-Classes is a collection of Java classes for programming support.
+Util-Classes is a collection of Java classes for general programming support.
 It covers a wide range of topics from simple small routines over Collection
-classes to larger utilities to address IO management and file safety.
+classes to larger utilities to address IO management, file safety and GUI 
+related tasks.
 
 =====================================
-UTIL-CLASSES 0-8-0 as of 27 Dec. 2022
+UTIL-CLASSES 0-9-0 as of 27 July 2023
 =====================================
 
 Reference JVM version: 1.8.0 OpenJDK
@@ -16,10 +17,10 @@ Author: Wolfgang Keller
 FILES IN THIS RELEASE:
 
 - PROGRAM -
-kse-util-cla1-0-8-0.jar, kse-util-cla2-0-8-0.jar
+kse-util-cla1-0-9-0.jar, kse-util-cla2-0-9-0.jar
 
 - DEVELOPER PACKAGE -
-kse-utilcla-devel-0-8-0.zip contains the binaries, the source code, a Javadoc
+kse-utilcla-devel-0-9-0.zip contains the binaries, the source code, a Javadoc
 API documentation and all material required to compile the project. 
 
 - REQUIREMENTS -

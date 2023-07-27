@@ -80,7 +80,6 @@ public abstract class AbstractByteChannel implements SeekableByteChannel,
 	 * 'w' for writing, 'rw' for reading and writing, 'a' for append mode
 	 * (writing only) and 'ra' for append mode with reading. 
 	 *
-	 * @param channelSize long initial channel size
 	 * @param modus String operation parameters
 	 */
 	public AbstractByteChannel (String modus) {
@@ -262,7 +261,7 @@ public abstract class AbstractByteChannel implements SeekableByteChannel,
 	 * starting at the given channel position. This method does not involve
 	 * the channel's current position.
 	 *  
-	 * @param dst {@code ByteBuffer} source data buffer
+	 * @param src {@code ByteBuffer} source data buffer
 	 * @param offset long start position in the channel
 	 * @return int length of data written, possibly zero 
 	 * @throws IOException 
@@ -318,7 +317,7 @@ public abstract class AbstractByteChannel implements SeekableByteChannel,
 	 * {@code checkCanWrite()}. It also does not need to update the channels
 	 * 'position' value.
 	 * 
-	 * @param dst {@code ByteBuffer}
+	 * @param src {@code ByteBuffer}
 	 * @return int number of bytes written, possibly zero
 	 * @throws IOException
 	 */
@@ -329,7 +328,7 @@ public abstract class AbstractByteChannel implements SeekableByteChannel,
 	 * This implementation does not need to synchronise or call 
 	 * {@code checkCanWrite()}. 
 	 * 
-	 * @param dst {@code ByteBuffer}
+	 * @param size long file length limit
 	 * @throws IOException
 	 */
 	protected abstract void truncateImpl (long size) throws IOException;

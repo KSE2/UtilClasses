@@ -7,7 +7,7 @@ package kse.utilclass2.misc;
 *  @author Wolfgang Keller
 *  Created 
 * 
-*  Copyright (c) 2022 by Wolfgang Keller, Munich, Germany
+*  Copyright (c) 2023 by Wolfgang Keller, Munich, Germany
 * 
 This program is not public domain software but copyright protected to the 
 author(s) stated above. However, you can use, redistribute and/or modify it 
@@ -71,6 +71,7 @@ public class MirrorFileManager {
     private File            mirrorRootDir;
     private String          mirrorFilePrefix = DEFAULT_MIRROR_PREFIX;
     private String          mirrorFileSuffix = DEFAULT_MIRROR_SUFFIX;
+    private int             threadPriority;
     private int             checkPeriod;
     private boolean         terminated;
     
@@ -109,10 +110,11 @@ public class MirrorFileManager {
         mirrorRootDir = rootDirectory.getAbsoluteFile();
         Util.ensureDirectory(mirrorRootDir, null);
         checkPeriod = period;
-        init( threadPriority );
+        this.threadPriority = threadPriority;
+        init();
     }
 
-    private void init (int threadPriority) {
+    private void init () {
         // create the file checking thread
         checkThread = new CheckThread(threadPriority);
         checkThread.start();
@@ -184,39 +186,78 @@ public class MirrorFileManager {
      * @return int priority
      */
     public int getThreadPriority () {
-        return checkThread.getPriority();
+        return threadPriority;
     }
     
     /** Sets the priority of the file-check service thread.
-     * @param int threadPriority
+     * 
+     * @param threadPriority int
+     * @throws IllegalArgumentException
      */
     public void setThreadPriority ( int threadPriority ) {
-        checkThread.setPriority( threadPriority );
+        if ( threadPriority < Thread.MIN_PRIORITY | threadPriority > Thread.MAX_PRIORITY ) {
+            throw new IllegalArgumentException( "illegal thread priority: " + threadPriority );
+        }
+    	this.threadPriority = threadPriority;
+    	if (checkThread != null) {
+    		checkThread.setPriority(threadPriority);
+    	}
     }
     
     /** Causes the file-controlling thread of this manager to pause
      * execution until a call to <code>resume()</code> occurs.
-     * (After calling this method it is still possible that an ongoing
-     * mirror-save thread is executing, however it is guaranteed that 
-     * no new thread is scheduled.)
+     * <p>After calling this method it is guaranteed that no new saving task
+     * is started. This method waits up to 2 minutes for currently ongoing 
+     * tasks to complete.
      */
     public void pause () {
-        checkThread.pause();
+    	if (checkThread != null) {
+	        checkThread.pause();
+	        
+	        // wait for ongoing threads to terminate
+	        long time = System.currentTimeMillis();
+	        while (hasOngoingTasks() && Util.timeDelta(time) < 2*Util.TM_MINUTE) {
+	        	Util.sleep(50);
+	        }
+    	}
     }
 
     /** Causes the file-controlling thread of this manager to
      * resume execution after it has been paused.
      */
     public void resume () {
-        checkThread.endPause();
+    	if (checkThread != null) {
+    		checkThread.endPause();
+    	}
     }
 
+    /** Sets the activity of this manager ON or OFF. This has a more 
+     * fundamental character than 'pause' and 'resume' as it releases or
+     * creates new the incorporated checking thread. This method overrides
+     * the invocation of 'pause()' and can be called multiple times on an
+     * instance.
+     * 
+     * @param v boolean true = active, false = inactive
+     */
+    public void setActive (boolean v) {
+    	if (!v & checkThread != null) {
+    		checkThread.terminate();
+    		checkThread = null;
+    	} 
+    	else if (v & !terminated & checkThread == null) {
+    		init();
+    	}
+    }
+    
     /** Terminally stops execution of the file-controlling thread.
      * No further call-back functions or event dispatches will be 
      * executed.
      */
     public void exit () {
-        checkThread.terminate();
+    	if (checkThread != null) {
+    		checkThread.terminate();
+    		checkThread = null;
+    	}
         terminated = true;
     }
     
@@ -227,9 +268,8 @@ public class MirrorFileManager {
      * thread and ends a possible sleeping state. CAUTION! This command 
      * is not required for regular execution of the manager's controller!
      */
-    public void invokeMirrorActivity ()
-    {
-        if ( checkThread.isAlive() & !terminated ) {
+    public void invokeMirrorActivity () {
+        if (checkThread != null && checkThread.isAlive()) {
             checkThread.kick();
         }   
     }
@@ -242,6 +282,21 @@ public class MirrorFileManager {
      */
     public File getMirrorRootDirectory () {
         return mirrorRootDir;
+    }
+    
+    /** Whether there are ongoing (currently executed) file saving tasks in 
+     * this manager.
+     * 
+     * @return boolean true = ongoing tasks, false = no ongoing tasks
+     */
+    public boolean hasOngoingTasks () {
+    	for (Mirrorable mir : getMirrorables()) {
+            MirrorFileAdminRecord admin = getFileAdminRec(mir.getIdentifier());
+            if (admin.saveThread != null && admin.saveThread.isAlive()) {
+                return true;
+            }
+    	}
+    	return false;
     }
     
     /** Returns the mirror-file of the current program session
@@ -301,37 +356,37 @@ public class MirrorFileManager {
 
     /** Removes all history mirror files of the given Mirrorable file.
      * (This also removes the specific history directory for this file
-     * if the directory is empty after deletion of the mirrors.)
+     * if the directory is empty after deletion of the mirrors.) Does nothing
+     * if the given name is not defined.
      *  
      * @param identifier String identifier of a {@code Mirrorable}
      * @return boolean <b>true</b> if and only if all listed
-     *         mirror files were deleted. On <b>false</b> the appl.
-     *         should check <code>getHistoryMirrorIterator()</code>
-     *         for files which could not get deleted.
-     * @throws IllegalArgumentException if identifier is unknown
+     *         mirror files were deleted or the given name is unknown. 
+     *         On <b>false</b> the appl. should check 
+     *         <code>getHistoryMirrorIterator()</code> for files which could 
+     *         not get deleted.
      */
     public boolean removeHistoryMirrors ( String identifier ) {
         boolean ok = true;
         MirrorFileAdminRecord rec = getFileAdminRec(identifier);
-        if (rec == null) {
-        	throw new IllegalArgumentException("(MirrorFileManager) unknown Mirrorable name : " + identifier);
+        if (rec != null) {
+	        // delete all history mirrors as known by the iterator
+	        List<File> hList = getHistoryMirrors(identifier); 
+	        for (File mir : hList) {
+	            ok &= mir.delete();
+	        }
+	
+	        // delete the directory
+	        File dir = rec.getHistoryDir();
+	        dir.delete();
         }
-        
-        // delete all history mirrors as known by the iterator
-        List<File> hList = getHistoryMirrors(identifier); 
-        for (File mir : hList) {
-            ok &= mir.delete();
-        }
-
-        // delete the directory
-        File dir = rec.getHistoryDir();
-        dir.delete();
         return ok;
     }
     
     /** Removes the current session mirror of the given {@code Mirrorable}.
      * If a current mirror save thread is ongoing, deletion will take 
-     * place immediately after saving has terminated. 
+     * place immediately after saving has terminated. Does nothing if the
+     * given name is not defined.
      * 
      * @param identifier String identifier of a {@code Mirrorable}
      */
@@ -411,7 +466,7 @@ public class MirrorFileManager {
      * {@code Mirrorable} and issues a "mirror file found" event 
      * (callback method of the {@code Mirrorable} object).
      * 
-     * @param admin {@code MirrorFileAdminRecord}
+     * @param file {@code Mirrorable}
      */
     protected void reportHistoryMirrors ( Mirrorable file ) {
        List<File> mirList = getHistoryMirrors(file.getIdentifier());
@@ -520,6 +575,16 @@ public class MirrorFileManager {
                 }
             }
         }
+    }
+    
+    /** Returns an array of all Mirrorable entries of this manager. The array
+     * is save for modifications.
+     * 
+     * @return {@code Mirrorable[]}
+     */
+    public Mirrorable[] getMirrorables () {
+        Mirrorable[] arr = mfList.values().toArray(new Mirrorable[mfList.size()]);
+        return arr;
     }
     
     protected void fireListModified( MirrorFileAdminRecord adminRec, boolean added ) {
@@ -635,7 +700,7 @@ public class MirrorFileManager {
          * other work on the original by synchronisation blocks.)
          * <p>Note: Only method <code>mirrorWrite()</code> will ever
          * be called from the manager on the clone.
-         * @see mirrorWrite()
+         * @see #mirrorWrite(OutputStream)
          *  
          * @return <code>MirrorableFile</code> "snapshot" clone or <b>null</b>
          */
@@ -809,8 +874,7 @@ public class MirrorFileManager {
                 // investigate all registered Mirrorable files
                 // and start mirror save-threads as required by files' current modify-number
                 if ( !(pausing | terminate) ) {
-                    @SuppressWarnings("unchecked")
-                    Mirrorable[] marr = mfList.values().toArray(new Mirrorable[mfList.size()]);
+                    Mirrorable[] marr = getMirrorables();
                     for ( Mirrorable f : marr ) {
                         MirrorFileAdminRecord admin = getFileAdminRec(f.getIdentifier());
                         
@@ -995,7 +1059,7 @@ public class MirrorFileManager {
         /** Returns the unique file definition for the current mirror file
          * (absolute path). 
          * 
-         * @param File mirror file definition
+         * @return File mirror file definition
          */
         public File getMirrorFileDef () {
            String path = mirrorFilePrefix + fileID + mirrorFileSuffix;
@@ -1038,7 +1102,7 @@ public class MirrorFileManager {
      * @param identifier String identifier of a {@code Mirrorable}
      * @return String mirror ID or null if identifier is unknown
      */
-    public String getMirrorName( String identifier ) {
+    public String getMirrorName (String identifier) {
         MirrorFileAdminRecord adminRec = getFileAdminRec(identifier);
         return adminRec == null ? null : adminRec.fileID;
     }
@@ -1047,7 +1111,7 @@ public class MirrorFileManager {
      * if such an object was not found.
      * 
      * @param name String identifier of a {@code Mirrorable} 
-     * @return {@code Mirrorable}
+     * @return {@code Mirrorable} or null
      */
     public Mirrorable getMirrorable (String name) {
     	return name == null ? null : mfList.get(name);
@@ -1056,13 +1120,14 @@ public class MirrorFileManager {
     /** Sets the valid modify number for a specific <code>Mirrorable</code>
      * to the currently supplied state. This sets the given <code>Mirrorable</code>
      * free of mirror file creation until the next increment of its modify number.
+     * Does nothing if the given name is not defined.
      * 
-     * @param identifier String identifier of a <code>Mirrorable</code>
+     * @param name String identifier of a <code>Mirrorable</code>
      */
-    public void setMirrorableSaved ( String identifier ) {
-       Mirrorable f = getMirrorable(identifier);
-       MirrorFileAdminRecord adminRec = getFileAdminRec(identifier);
-       if (adminRec != null) {
+    public void setMirrorableSaved (String name) {
+       Mirrorable f = getMirrorable(name);
+       MirrorFileAdminRecord adminRec = getFileAdminRec(name);
+       if (adminRec != null && f != null) {
           adminRec.fileSaveNumber = f.getModifyNumber();
        }
     }

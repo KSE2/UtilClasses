@@ -1,6 +1,5 @@
 /*
- *  AutomoveDialog in org.jpws.front.util
- *  file: AutomoveDialog.java
+ *  File: AutomoveDialog.java
  * 
  *  Project Jpws-Front
  *  @author Wolfgang Keller

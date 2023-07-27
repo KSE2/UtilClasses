@@ -206,7 +206,6 @@ public class LayeredList extends JList<LayeredList.ListElement> {
     * 
     * @param folded boolean whether FOLDED or UNFOLDED icon is requested
     *               (true == FOLDED icon)
-    * @return Icon the folder icon
     */
    public void setFolderIcon (Icon icon, boolean folded) {
       if (folded) {

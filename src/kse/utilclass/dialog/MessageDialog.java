@@ -33,7 +33,7 @@ package kse.utilclass.dialog;
 *  @author Wolfgang Keller
 *  Created 
 * 
-*  Copyright (c) 2022 by Wolfgang Keller, Munich, Germany
+*  Copyright (c) 2023 by Wolfgang Keller, Munich, Germany
 * 
 This program is not public domain software but copyright protected to the 
 author(s) stated above. However, you can use, redistribute and/or modify it 
@@ -253,8 +253,7 @@ public static JLabel createMessageTextLabel (String text) {
  *             or <code>String</code>)
  * @param type <code>MessageType</code> appearance quality            
  */
-public static void showInfoMessage (Component parent, String title, 
-		Object text, MessageType type) {
+public static void showInfoMessage (Component parent, String title, Object text, MessageType type) {
    showMessage(parent, title, text, type, ButtonBarModus.OK);
 }
 
@@ -341,7 +340,7 @@ public static DialogTerminationType showMessage (
  * @param msgType <code>MessageType</code> appearance quality            
  * @param dlgType {@code ButtonBarModus} dialog type for button setup 
  * @param modal boolean 
- * @return
+ * @return {@code MessageDialog}
  */
 public static MessageDialog createMessageDialog ( 
 		final Component parent, 

@@ -7,7 +7,7 @@ package kse.utilclass.dialog;
 *  @author Wolfgang Keller
 *  Created 
 * 
-*  Copyright (c) 2022 by Wolfgang Keller, Munich, Germany
+*  Copyright (c) 2023 by Wolfgang Keller, Munich, Germany
 * 
 This program is not public domain software but copyright protected to the 
 author(s) stated above. However, you can use, redistribute and/or modify it 
@@ -29,10 +29,10 @@ import javax.swing.JButton;
 
 import kse.utilclass.dialog.GSDialog.ButtonType;
 
-/** Class to hold user content and code for dealing with button-pressed
- * events from the dialog's button-bar. The user content comprises all
- * visible content except the button-bar, which is organised by the 
- * dialog class ({@code GSDialog}).
+/** Class to hold visible user content for a {@code GSDialog} and code for 
+ * dealing with button-pressed events from the dialog's button-bar. 
+ * The user content comprises all visible content except the button-bar, 
+ * which is organised by the dialog class.
  * 
  */
 public abstract class DialogPerformBlock {
@@ -47,28 +47,48 @@ public abstract class DialogPerformBlock {
 	 */
 	public abstract Container getContent ();
 
-	/** Method triggered to perform a button's activity. This is user supplied
-	 * code to deal with variants of button-pressed events. The return value
-	 * 'true' can be used to dispose the dialog. The default value is 'true'.
+	/** This method is called by the dialog ({@code GSDialog}) and performs a
+	 * pressed button's activity. The button can be a standard or a user 
+	 * defined button. The implementation of {@code DialogPerformBlock} 
+	 * calls methods 'setUserConfirmed()' or 'setNoTerminated()' w/ arguments
+	 * depending on whether YES/OK, NO or CANCEL have been pressed. It then 
+	 * returns 'true' in case a standard button or 'false' if a user button 
+	 * has been pressed. The return value determines whether the dialog will
+	 * be closed. 
+	 * <p>The user can override this method in order to perform individual 
+	 * tasks and intercept the decision to close the dialog.
 	 * 
 	 * @param index int index number of button
 	 * @param type {@code ButtonType}
 	 * @param button {@code JButton} button clicked
 	 * @return boolean true = dispose dialog, false = continue dialog
 	 */
-	public boolean perform_button (int index, ButtonType type, JButton button) {return true;}
+	public boolean perform_button (int index, ButtonType type, JButton button) {
+		switch (type) {
+		case YES_BUTTON:  setUserConfirmed(true); setNoTerminated(false);
+		break;
+		case NO_BUTTON:	  setUserConfirmed(false); setNoTerminated(true); 
+		break;
+		case CANCEL_BUTTON:	 setUserConfirmed(false); setNoTerminated(false); 
+		break;
+		default: return false;
+		}
+		return true;
+	}
 	
-	/** Whether the user confirmed the result of editing the dialog via
-	 * a confirmation button, like "OK", "Yes" or "Continue".
-	 * This property has to be set programmatically by method 
-	 * 'setUserConfirmed()' of this perform-block. The default value is 
-	 * 'false'.
+	/** Whether the user terminated the dialog via the "YES" or "OK" button. 
+	 * This property can be set programmatically by method 
+	 * 'setUserConfirmed()'. It is automatically set by the default 
+	 * implementation of class {@code DialogPerformBlock}.
 	 * 
-	 * @return boolean true = user confirmed, false = broken termination
+	 * @return boolean true = user confirmed, false = unconfirmed termination
 	 */
 	public boolean getUserConfirmed () {return userConfirmed;}
 
 	/** Sets the "User Confirmed" property of this performance block.
+	 * This method is automatically called by class {@code DialogPerformBlock}
+	 * when a standard button of the button-bar is pressed which by default
+	 * leads to the closing of the dialog.
 	 * 
 	 * @param confirmed boolean
 	 */
@@ -77,14 +97,18 @@ public abstract class DialogPerformBlock {
 	}
 
 	/** Whether the user terminated the dialog via the "No" button. This 
-	 * property has to be set programmatically by method 'setNoTerminated()'
-	 * of this perform-block. The default value is 'false'.
+	 * property can be set programmatically by method 'setNoTerminated()'.
+	 * It is automatically set by the default implementation of class
+	 * {@code DialogPerformBlock}.
 	 * 
 	 * @return boolean true = "No" termination, false = other state
 	 */
 	public boolean getNoTerminated () {return noTerminated;}
 
 	/** Sets the "No-Terminated" property of this performance block.
+	 * This method is automatically called by class {@code DialogPerformBlock}
+	 * when a standard button of the button-bar is pressed which by default
+	 * leads to the closing of the dialog.
 	 * 
 	 * @param v boolean true = "No" terminated
 	 */

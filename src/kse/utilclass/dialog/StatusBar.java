@@ -7,7 +7,7 @@ package kse.utilclass.dialog;
 *  @author Wolfgang Keller
 *  Created 
 * 
-*  Copyright (c) 2022 by Wolfgang Keller, Munich, Germany
+*  Copyright (c) 2023 by Wolfgang Keller, Munich, Germany
 * 
 This program is not public domain software but copyright protected to the 
 author(s) stated above. However, you can use, redistribute and/or modify it 
@@ -38,14 +38,12 @@ import javax.swing.JPanel;
 /**
  *  A status bar component (JPanel) with multiple separately addressable display 
  *  elements. These elements are "Text", "File Format" and "Program Activity".
- *  <p>The status bar is a constitutional part of the program mainframe (
- *  <code>PwsafeJ</code>).
  *  
  *  <p>StatusBar operates display activity safely on the EDT. 
 
  */
-public class StatusBar extends JPanel
-{
+public class StatusBar extends JPanel {
+	
    /** Message display duration time; 30 seconds. */
    public static final int STATUSTEXTDELAY = 30000;
    
@@ -175,8 +173,8 @@ public void setCounterCell ( String text ) {
 /** Informs StatusBar about the current program activity modus. This will set 
  *  the content of the "Program Activity" cell.
  * 
- *  @param activity program activity constant (ACTIVE or PASSIVE)   
- * */
+ *  @param active boolean whether program  is ACTIVE or PASSIVE   
+ */
 public void setActivity ( boolean active ) {
 //   Log.log( 10, "(StatusBar.setActivity) set ACTIVITY with " + activity );
    activityCounter += active ? 1 : -1;

@@ -5,12 +5,16 @@ import java.awt.Point;
 import java.awt.Window;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.event.KeyEvent;
+import java.awt.event.WindowEvent;
 import java.lang.reflect.InvocationTargetException;
 import java.util.Objects;
 
 import javax.swing.JButton;
+import javax.swing.JComponent;
 import javax.swing.JDialog;
 import javax.swing.JPanel;
+import javax.swing.KeyStroke;
 
 /*
 *  File: GSDialog.java
@@ -19,7 +23,7 @@ import javax.swing.JPanel;
 *  @author Wolfgang Keller
 *  Created 
 * 
-*  Copyright (c) 2022 by Wolfgang Keller, Munich, Germany
+*  Copyright (c) 2023 by Wolfgang Keller, Munich, Germany
 * 
 This program is not public domain software but copyright protected to the 
 author(s) stated above. However, you can use, redistribute and/or modify it 
@@ -43,6 +47,7 @@ public class GSDialog extends JDialog {
 	private JPanel buttonBar;
 	private ButtonBarModus buttonBarModus = ButtonBarModus.OK;
 	private ActionListener buttonPerformer = new ButtonPerformer();
+	private boolean closeableByEscape = true;
 	private boolean closedByEscape;
 	private boolean closedByButton;
 	
@@ -141,7 +146,13 @@ public class GSDialog extends JDialog {
 		return null;
 	}
 	
+	public boolean isOkPressed () {
+		return getTerminationType() == DialogTerminationType.OK_PRESSED;
+	}
 	
+	public boolean isCancelPressed () {
+		return getTerminationType() == DialogTerminationType.CANCEL_PRESSED;
+	}
 	
 	@Override
 	public void dispose() {
@@ -160,8 +171,15 @@ public class GSDialog extends JDialog {
 	}
 
 	private void init () {
+		// set window close button
+		setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
 		
-		// set up the button bar
+	    // register ESCAPE key as (optional) window close trigger
+	    KeyStroke stroke = KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE, 0);
+	    getRootPane().registerKeyboardAction(
+	          new KListener(), stroke, JComponent.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT);
+
+	    // set up the button bar
 		buttonBar = new JPanel();
 		getContentPane().add(buttonBar, BorderLayout.SOUTH);
 		
@@ -256,19 +274,28 @@ public class GSDialog extends JDialog {
 		if (nrbut > 0) {
 			getRootPane().setDefaultButton(getButton(0));
 		}
-		
-		// set window close button
-		setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
 	}
 	
 	@Override
 	public void setVisible (boolean v) {
-		if (v && !isShowing() && getLocation().equals(new Point())) {
+		if (v && !isShowing()) {
 			setLocationRelativeTo(getOwner());
 		}
 		super.setVisible(v);
 	}
 	
+    /** Sets whether this dialog can be closed by the ESCAPE button.
+     * The default value is <b>true</b>.
+     * <p>If <b>true</b>, the triggered action of the ESCAPE button is 
+     * equivalent to the <tt>WindowClosing</tt> event (as called by a
+     * frame decoration close, e.g.).
+     *  
+     * @param v boolean <b>true</b> == closeable by ESCAPE  
+     */
+    public void setCloseByEscape (boolean v) {
+       closeableByEscape = v;
+    }
+
 	private class ButtonPerformer implements ActionListener {
 
 		@Override
@@ -291,6 +318,19 @@ public class GSDialog extends JDialog {
 				dispose();
 			}
 		}
-		
 	}
+	
+	   /** Class listening to key events which were registered at the root pane. 
+	    *  Currently only ESCAPE-key. */
+	   private class KListener implements ActionListener {
+	      @Override
+	      public void actionPerformed (ActionEvent e) {
+	         if (closeableByEscape) {
+	            processWindowEvent(new WindowEvent(GSDialog.this, WindowEvent.WINDOW_CLOSING));
+                closedByEscape = true;
+	         }
+	      }
+	   }
+	   
+
 }

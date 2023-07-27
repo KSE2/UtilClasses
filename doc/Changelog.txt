@@ -1,0 +1,25 @@
+Project UtilClasses
+CHANGELOG 
+
+*** Release V 0-9-0 ***, 27. July 2023
+Changes since version 0-8-0
+The licence of usage and distribution has changed with this release to
+GNU General Public License (GPL), Version 2, June 1991
+
+NEW FEATURES
+New classes: 
+- HtmlDialogPanel (panel to display html formatted texts)
+- ColorChooserDialog (tool to select a color from a set of choices)
+- FontChooser (tool to select a font-style-size from all available 
+  system fonts)
+
+Improvements:
+GSDialog, Util, AmpleTextArea and MirrorFileManager.
+DialogPerformBlock now sets automatically the correct result of the
+button type when user presses a button. GSDialog can close by Escape key.
+AmpleTextArea has two new key assignments CTRL-A and CTRL-B (localised 
+date and time texts) and a facility to activate a user supplied 'Help' 
+command in the popup menu. MirrorFileManager has an additional activation
+switch which allows to switch on/off superior to pause and resume.
+
+
