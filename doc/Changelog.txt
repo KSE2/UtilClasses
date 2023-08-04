@@ -1,6 +1,16 @@
 Project UtilClasses
 CHANGELOG 
 
+*** Release V 0-9-1 ***, 04. Aug. 2023
+Maintanence release.
+Changes since version 0-9-0
+
+Correction for AmpleTextArea: key assigments CTRL-E and CTRL-F in place
+for CTRL-A and CTRL-B (CTRL-A was multiple assigned). Agglomeration time
+for text modifications (undo units) was enlarged to 1000 ms.
+In MirrorFileManager are 'pause()', 'resume()' and 'setActive()' 
+synchronised.
+
 *** Release V 0-9-0 ***, 27. July 2023
 Changes since version 0-8-0
 The licence of usage and distribution has changed with this release to

@@ -87,8 +87,8 @@ import kse.utilclass.misc.Util;
  * <br>3. keystroke support with these (additional) assignments: CTRL-W 
  * (select-word), CTRL-L (select line), CTRL-P (select paragraph), 
  * CTRL-Z (undo), CTRL-Y, CTRL-SHIFT-Z (redo), CTRL-D (current date), 
- * CTRL-T (current time), CTRL-U (universal date and time), CTRL-A (current
- * date localised), CTRL-B (current time localised)
+ * CTRL-T (current time), CTRL-U (universal date and time), CTRL-E (current
+ * date localised), CTRL-F (current time localised)
  * CTRL-PLUS (increase font size), CTRL-MINUS (decrease font size). 
  * 
  * <p>With {@code getMenuActions()} the list of available menu actions can be
@@ -99,7 +99,7 @@ import kse.utilclass.misc.Util;
  */
 
 public class AmpleTextArea extends JTextArea implements MenuActivist {
-   private static final int DEFAULT_EDIT_AGGLO_TIME = 800; 
+   private static final int DEFAULT_EDIT_AGGLO_TIME = 1000; 
    private static HashMap<Object, Action> actionLookup;
    private static Timer timer = new Timer();
    
@@ -183,10 +183,9 @@ public class AmpleTextArea extends JTextArea implements MenuActivist {
 		   public void focusGained(FocusEvent e) {
 			   if (selection == null) return;
 			
-			   String hs = "(AmplTextArea.focusGained) selected range: " + selection.width + 
-					   " -- " + selection.height;
-			   System.out.println("-- " + hs);
-			   Log.debug(1, hs);
+//			   String hs = "(AmplTextArea.focusGained) selected range: " + selection.width + 
+//					   " -- " + selection.height;
+//			   Log.debug(1, hs);
 
 			   // perform a one-time text selection if returning to focus
 			   select(selection.width, selection.height);
@@ -198,36 +197,6 @@ public class AmpleTextArea extends JTextArea implements MenuActivist {
 	   Log.debug(10, "(AmpleTextArea.init) text font = " + getFont());
 	}
 	
-//    public void addPropertyChangeListener (PropertyChangeListener listener) {
-//       synchronized (support) {
-//          List<?> list = Arrays.asList(support.getPropertyChangeListeners());
-//          if (!list.contains(listener)) {
-//             support.addPropertyChangeListener(listener);
-//          }
-//       }
-//	}
-//	   
-//    public void addPropertyChangeListener (String propertyName, PropertyChangeListener listener) {
-//       synchronized (support) {
-//          List<?> list = Arrays.asList(support.getPropertyChangeListeners(propertyName));
-//          if (!list.contains(listener)) {
-//             support.addPropertyChangeListener(propertyName, listener);
-//          }
-//       }
-//    }
-//   
-//   public void removePropertyChangeListener (PropertyChangeListener listener) {
-//      synchronized (support) {
-//         support.removePropertyChangeListener(listener);
-//      }
-//   }
-//   
-//   public void removePropertyChangeListener (String propertyName, PropertyChangeListener listener) {
-//      synchronized (support) {
-//         support.removePropertyChangeListener(propertyName, listener);
-//      }
-//   }
-	   
 	private void modifyKeystrokes () {
 	   Keymap parent, map;
 	   Action action;
@@ -274,12 +243,12 @@ public class AmpleTextArea extends JTextArea implements MenuActivist {
 	   map.addActionForKeyStroke(key,  new ATA_Action( "keystroke.CTRL-T" ));
 	
 	   // add CTRL-A: insert current date (local tm, local expr) action 
-	   key = KeyStroke.getKeyStroke( KeyEvent.VK_A, InputEvent.CTRL_MASK );
-	   map.addActionForKeyStroke(key,  new ATA_Action( "keystroke.CTRL-A" ));
+	   key = KeyStroke.getKeyStroke( KeyEvent.VK_E, InputEvent.CTRL_MASK );
+	   map.addActionForKeyStroke(key,  new ATA_Action( "keystroke.CTRL-E" ));
 	
 	   // add CTRL-B: insert current time (local tm, local expr) action 
-	   key = KeyStroke.getKeyStroke( KeyEvent.VK_B, InputEvent.CTRL_MASK );
-	   map.addActionForKeyStroke(key,  new ATA_Action( "keystroke.CTRL-B" ));
+	   key = KeyStroke.getKeyStroke( KeyEvent.VK_F, InputEvent.CTRL_MASK );
+	   map.addActionForKeyStroke(key,  new ATA_Action( "keystroke.CTRL-F" ));
 	
 	   // add CTRL-U: insert current date+time (UT) action 
 	   key = KeyStroke.getKeyStroke( KeyEvent.VK_U, InputEvent.CTRL_MASK );
@@ -888,12 +857,12 @@ public class AmpleTextArea extends JTextArea implements MenuActivist {
 	         dtext = dtext.substring( 11 ).concat( " " );
 	         insert( dtext, getCaretPosition() );
 
-	      } else if ( cmd.equals( "keystroke.CTRL-A" ) ) {
+	      } else if ( cmd.equals( "keystroke.CTRL-E" ) ) {
 		     Date date = new Date( System.currentTimeMillis() );
 		     String dtext = DateFormat.getDateInstance().format(date).concat( " " );
 	         insert( dtext, getCaretPosition() );
 
-	      } else if ( cmd.equals( "keystroke.CTRL-B" ) ) {
+	      } else if ( cmd.equals( "keystroke.CTRL-F" ) ) {
 		     Date date = new Date( System.currentTimeMillis() );
 		     String dtext = DateFormat.getTimeInstance().format(date).concat( " " );
 	         insert( dtext, getCaretPosition() );

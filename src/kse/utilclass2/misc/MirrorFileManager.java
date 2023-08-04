@@ -210,7 +210,7 @@ public class MirrorFileManager {
      * is started. This method waits up to 2 minutes for currently ongoing 
      * tasks to complete.
      */
-    public void pause () {
+    public synchronized void pause () {
     	if (checkThread != null) {
 	        checkThread.pause();
 	        
@@ -225,7 +225,7 @@ public class MirrorFileManager {
     /** Causes the file-controlling thread of this manager to
      * resume execution after it has been paused.
      */
-    public void resume () {
+    public synchronized void resume () {
     	if (checkThread != null) {
     		checkThread.endPause();
     	}
@@ -239,7 +239,7 @@ public class MirrorFileManager {
      * 
      * @param v boolean true = active, false = inactive
      */
-    public void setActive (boolean v) {
+    public synchronized void setActive (boolean v) {
     	if (!v & checkThread != null) {
     		checkThread.terminate();
     		checkThread = null;
