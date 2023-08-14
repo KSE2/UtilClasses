@@ -178,6 +178,19 @@ public class GUIService {
 	   MessageDialog.showInfoMessage(owner, title, hstr, MessageType.error);
 	}
 
+	/** Displays an error message dialog with the given message and a 
+	 * default title.
+	 * <p>Waits until the message is confirmed or the calling thread is 
+	 * interrupted. 
+	 * 
+	 * @param owner Component owner of the message dialog; if null the default
+	 *        frame is used
+	 * @param text String message text; if <b>null</b> a standard 
+	 */ 
+	public static void failureMessage (Component owner, String text) {
+		failureMessage(owner, null, text, null);
+	}
+	
 	/** Displays an error message dialog referring to the parameter exception.
 	 * <p>Waits until the message is confirmed or the calling thread is 
 	 * interrupted. 

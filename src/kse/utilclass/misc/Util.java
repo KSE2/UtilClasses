@@ -256,6 +256,35 @@ public class Util {
 		}
 	}
 
+	/** Tests the given integer value of element in 1..MAX_INT and throws 
+	 * an IllegalArgumentException with the given message if this is not the 
+	 * case.
+	 * 
+	 * @param i int investigated integer
+	 * @param message String exception text; may be null for default message
+	 * @return int i
+	 * @throws IllegalArgumentException
+	 */
+	public static int requireNPositive(int i, String message) {
+		if (i < 1) 
+			throw new IllegalArgumentException(message != null ? message : "argument value below 1");
+		return i;
+	}
+
+	/** Tests the given integer value of element in 1..MAX_INT and throws 
+	 * an IllegalArgumentException with a default message if this is not the
+	 * case.
+	 * 
+	 * @param i int investigated integer
+	 * @return int i
+	 * @throws IllegalArgumentException
+	 */
+	public static int requireNPositive (int i) {
+		if (i < 1) 
+			throw new IllegalArgumentException("argument value below 1");
+		return i;
+	}
+
 	/** Returns the value from the given iterator at index position.
 	 * 
 	 * @param it {@code Iterator<T>}
@@ -2461,6 +2490,22 @@ public class Util {
 			}
 		}
 		return buf.toString();
+	}
+
+	/** Returns the next pseudo-random integer.
+	 *  
+	 * @return int
+	 */
+	public static int nextRand() {
+		return random.nextInt();
+	}
+
+	/** Returns the next pseudo-random boolean.
+	 * 
+	 * @return boolean
+	 */
+	public static boolean nextBoolean() {
+		return random.nextBoolean();
 	}
 	
 }
