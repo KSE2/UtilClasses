@@ -301,14 +301,14 @@ public class GUIService {
 	 * <p>Waits until the message is confirmed or the calling thread is 
 	 * interrupted. 
 	 * 
-	 * @param owner {@code Component} parent component; if null the mainframe
+	 * @param parent {@code Component} parent component; if null the mainframe
 	 * 				window is used
 	 * @param title String title of dialog; may be null in which case a 
 	 * 				standard title is used 
 	 * @param text String message text
 	 */
-	public static void infoMessage (Component owner, String title, String text) {
-	   MessageDialog.showInfoMessage(owner, title, text, MessageType.info);
+	public static void infoMessage (Component parent, String title, String text) {
+	   MessageDialog.showInfoMessage(parent, title, text, MessageType.info);
 	}
 
 	/** Returns a concatenation of parameter <tt>text</tt> and an excerpt

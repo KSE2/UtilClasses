@@ -1,6 +1,17 @@
 Project UtilClasses
 CHANGELOG 
 
+*** Release V 0-10-0 ***, 09. Nov. 2023
+Changes since version 0-9-1
+
+New class ResourceLoader enables comfortable access to the content of
+resource bundles for internationalised text, furthermore images or other 
+binary resource files.
+New class CommandlineHandler is an aid for program startup phases and 
+enables identification of program arguments and option values (unary and
+binary options).
+New functionality for classes MessageDialog and Util.
+
 *** Release V 0-9-1 ***, 04. Aug. 2023
 Maintanence release.
 Changes since version 0-9-0

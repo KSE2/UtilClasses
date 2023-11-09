@@ -6,7 +6,7 @@ classes to larger utilities to address IO management, file safety and GUI
 related tasks.
 
 =====================================
-UTIL-CLASSES 0-9-1 as of 04 Aug. 2023
+UTIL-CLASSES 0-9-1 as of 09 Nov. 2023
 =====================================
 
 Reference JVM version: 1.8.0 OpenJDK
@@ -17,10 +17,10 @@ Author: Wolfgang Keller
 FILES IN THIS RELEASE:
 
 - PROGRAM -
-kse-util-cla1-0-9-1.jar, kse-util-cla2-0-9-1.jar
+kse-util-cla1-0-10-0.jar, kse-util-cla2-0-10-0.jar
 
 - DEVELOPER PACKAGE -
-kse-utilcla-devel-0-9-1.zip contains the binaries, the source code, a Javadoc
+kse-utilcla-devel-0-10-0.zip contains the binaries, the source code, a Javadoc
 API documentation and all material required to compile the project. 
 
 - REQUIREMENTS -

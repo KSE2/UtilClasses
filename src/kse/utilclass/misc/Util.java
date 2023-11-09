@@ -93,7 +93,23 @@ public class Util {
 	public static final int DEFAULT_BUFFER_SIZE = 4096*2;
 	
 	private static Random random = new Random();
+	private static boolean isWindows;
 
+	private static final BitSet URI_UNRESERVED_CHARS;
+	
+	static {
+		BitSet bs  = new BitSet(128);
+		bs.set('A', 'Z');
+		bs.set('a', 'z');
+		bs.set('0', '9');
+		bs.set('-');
+		bs.set('.');
+		bs.set('_');
+		bs.set('~');
+		URI_UNRESERVED_CHARS = bs;
+        isWindows = System.getProperty("os.name","").toLowerCase().indexOf("windows") > -1;
+	}
+	
 	/** Whether the given set is sorted in ascending order via its iterator and
 	 * the given comparator. An empty set is regarded sorted.
 	 *  
@@ -886,10 +902,11 @@ public class Util {
 
 	/** Returns the TEMP directory as noted in JVM system properties.
 	 * @return File
+	 * @throws IOException  if canonical file fails
 	 */
-	public static File getTempDir() {
+	public static File getTempDir() throws IOException {
 		String path = System.getProperty("java.io.tmpdir");
-		return new File(path);
+		return new File(path).getCanonicalFile();
 	}
 
 	/** Appends the contents of file <code>top</code> to the end of file <code>
@@ -1474,9 +1491,8 @@ public class Util {
 	/** Translates the given text into a HTML-encoded text displayable in HTML 
 	 * environments. This version of the method does not prepended the 
 	 * {@code '<html>'} tag. 
-	 * <p>Substitutes conflicting characters in the text with HTML-masked 
-	 * expressions. This will remove all '\n' and '\r' occurrences from the 
-	 * text. 
+	 * <p>Substitutes conflicting characters in the text with HTML 
+	 * expressions and translates line breaks. 
 	 * 
 	 * @param text String source text
 	 * @return String translated text
@@ -1488,9 +1504,8 @@ public class Util {
 	/** Translates the given text into a HTML-encoded text displayable in HTML 
 	 * environments. Optionally the text can be prepended by {@code '<html>'}
 	 * if this tag is not yet there. 
-	 * <p>Substitutes conflicting characters in the text with HTML-masked 
-	 * expressions. This will remove all '\n' and '\r' occurrences from the 
-	 * text. 
+	 * <p>Substitutes conflicting characters in the text with HTML 
+	 * expressions and translates line breaks.
 	 * 
 	 * @param text String source text
 	 * @param headed boolean if true the resulting text will start with 
@@ -1530,19 +1545,6 @@ public class Util {
        return b.toString();
 	}
 
-	private static final BitSet URI_UNRESERVED_CHARS;
-	static {
-		BitSet bs  = new BitSet(128);
-		bs.set('A', 'Z');
-		bs.set('a', 'z');
-		bs.set('0', '9');
-		bs.set('-');
-		bs.set('.');
-		bs.set('_');
-		bs.set('~');
-		URI_UNRESERVED_CHARS = bs;
-	}
-	
 	/** Returns a translation of the given text into an URI-encoded version, 
 	 * or null iff the argument was null. The translated version contains 
 	 * characters w/ code-points outside of the core-set for URI expressions
@@ -2270,30 +2272,76 @@ public class Util {
 		return (int) crc.getValue();
 	}
 
+	public static boolean isWindows () {
+	   return isWindows;
+	}
+
 	/** Returns the user home directory. This refers to the system properties.
 	 * 
 	 * @return File
+	 * @throws IOException if canonical file fails
 	 */
-	public static File getUserHomeDir () {
+	public static File getUserHomeDir () throws IOException {
 		String hs = System.getProperty("user.home");
 		if (hs == null) {
-			throw new IllegalStateException("JVM failure: no user home defined");
+			throw new IllegalStateException("system failure: no user home defined");
 		}
-		return new File(hs);
+		return new File(hs).getCanonicalFile();
 	}
 	
 	/** Returns the current user directory. This refers to the system properties.
 	 * 
 	 * @return File
+	 * @throws IOException  if canonical file fails
 	 */
-	public static File getUserDir () {
+	public static File getUserDir () throws IOException {
 		String hs = System.getProperty("user.dir");
 		if (hs == null) {
-			throw new IllegalStateException("JVM failure: no user home defined");
+			throw new IllegalStateException("system failure: no user home defined");
 		}
-		return new File(hs);
+		return new File(hs).getCanonicalFile();
 	}
 
+   /** Returns the best guess for the location of the program files (directory).
+    * 
+    * @return File directory of running program in canonical form
+    * @throws IOException if canonical file name fails
+    */   
+   public static File getProgramDir () throws IOException {
+      String path, hstr;
+      int i;
+      
+      if ( (path = System.getProperty( "java.class.path" )) != null ) {
+         // extract first path entry
+         char sep = isWindows() ? ';' : ':';
+         if ( (i = path.indexOf(sep)) > -1 ) {
+            path = path.substring( 0, i );
+         }
+         path = path.trim();
+         
+         // get canonical value 
+         if (path != null && path.length() > 0) {
+            // get canonical (this may resolve a symbolic link of caller)
+            path = new File(path).getCanonicalPath(); 
+         
+            // take parent dir if path denotes JAR or EXE file
+            hstr = path.toLowerCase();
+            if (hstr.endsWith(".jar") || hstr.endsWith(".exe")) {
+               path = new File(path).getParent();
+            }
+         }
+      }
+      
+      // if no path found in java.class.path then take user.dir 
+      if ( path == null || path.isEmpty() || !new File(path).isDirectory() ) {
+         path = System.getProperty("user.dir");
+      }
+   
+      path = new File(path).getCanonicalPath(); 
+      Log.debug( 8, "(Util.getProgramDir) --- program directory: [" + path + "]");
+      return new File(path);
+   }
+	   
 	/** Decodes a {@code Rectangle} text code. 
 	 * <p>The valid code may contain 0, 2 or 4 elements separated by ',' char.
 	 * The 2-element version contains width and height (dimension and zero 

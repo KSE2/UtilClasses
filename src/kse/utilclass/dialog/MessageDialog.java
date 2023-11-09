@@ -252,9 +252,10 @@ public static JLabel createMessageTextLabel (String text) {
  * @param text <code>Object</code> text to display (<code>Component</code> 
  *             or <code>String</code>)
  * @param type <code>MessageType</code> appearance quality            
+ * @return {@code DialogTerminationType}
  */
-public static void showInfoMessage (Component parent, String title, Object text, MessageType type) {
-   showMessage(parent, title, text, type, ButtonBarModus.OK);
+public static DialogTerminationType showInfoMessage (Component parent, String title, Object text, MessageType type) {
+   return showMessage(parent, title, text, type, ButtonBarModus.OK);
 }
 
 /** Displays a modal question message which the user can answer with "Yes" 
@@ -288,8 +289,7 @@ public static boolean showConfirmMessage ( final Component parent,
  *             or <code>String</code>); may be null
  * @param msgType <code>MessageType</code> appearance quality            
  * @param dlgType {@code ButtonBarModus} dialog type for button setup 
- * @return boolean[] with values indicating what action was taken to terminate
- *         the dialog: 0 = confirmed, 1 = Cancel, 2 = No, 3 = Escape 
+ * @return {@code DialogTerminationType}
  */
 public static DialogTerminationType showMessage ( 
 					final Component parent, 
@@ -298,38 +298,129 @@ public static DialogTerminationType showMessage (
                     final MessageType msgType,
                     final ButtonBarModus dlgType )
 {
-   final DialogTerminationType[] result = new DialogTerminationType[1];
-   Window owner = parent == null ? GUIService.getMainFrame() 
-		   					: GUIService.getAncestorWindow(parent);
+	return (DialogTerminationType) showMessage(parent, title, text, msgType, dlgType, true);
+}
+
+/** Displays a simple non-modal info message that the user can click away 
+ * through "Ok" button. Display is guaranteed to run on the EDT.
+ *  
+ * @param parent <code>Component</code> the component this message's 
+ *               display is related to; may be null
+ * @param title <code>String</code> dialog title; may be <b>null</b>              
+ * @param text <code>Object</code> text to display (<code>Component</code> 
+ *             or <code>String</code>)
+ * @param type <code>MessageType</code> appearance quality            
+ * @return {@code MessageDialog} the displayed dialog or null if EDT is blocked
+ *         and this thread is interrupted 
+ */
+public static MessageDialog showInfoMessage2 (Component parent, String title, Object text, MessageType type) {
+   return showMessage2(parent, title, text, type, ButtonBarModus.OK);
+}
+
+/** Displays a non-modal message box with user interaction as designed by given
+ * parameters. Display is guaranteed to run on the EDT.
+ * 
+ * @param parent <code>Component</code> the component this message's 
+ *               display is related to; may be null
+ * @param title <code>String</code> dialog title; may be null      
+ * @param text <code>Object</code> text to display (<code>Component</code> 
+ *             or <code>String</code>); may be null
+ * @param msgType <code>MessageType</code> appearance quality            
+ * @param dlgType {@code ButtonBarModus} dialog type for button setup 
+ * @return {@code MessageDialog} or null if EDT is blocked and this thread was 
+ *         interrupted 
+ */
+public static MessageDialog showMessage2 ( 
+					final Component parent, 
+		            final String title, 
+                    final Object text, 
+                    final MessageType msgType,
+                    final ButtonBarModus dlgType )
+{
+   return (MessageDialog) showMessage(parent, title, text, msgType, dlgType, false); 
+//   Window owner = parent == null ? GUIService.getMainFrame() 
+//		   					: GUIService.getAncestorWindow(parent);
+//   MessageDialog dlg[] = new MessageDialog[1];
+//   
+//   Runnable run = new Runnable() {
+//		@Override
+//		public void run() {
+//		   MessageDialog dialog = new MessageDialog(owner, text, msgType, dlgType, false);
+//		   boolean singleButton = dlgType == ButtonBarModus.OK | 
+//				   dlgType == ButtonBarModus.CONTINUE |
+//				   dlgType == ButtonBarModus.SINGLE;
+//		   String defTitle = singleButton ? "Information" : "Please Confirm";
+//		   String hstr = title == null ? defTitle : title;
+//		   dialog.setTitle(hstr);
+//		   dialog.pack();
+//		   dialog.setVisible(true);
+//		   dlg[0] = dialog;
+//		}
+//   };
+//
+//   try {
+//   	  GUIService.performOnEDT(run, true);
+//	} catch (InvocationTargetException e) {
+//		e.printStackTrace();
+//	} catch (InterruptedException e) {
+//		e.printStackTrace();
+//	}
+//   return dlg[0];
+}
+
+/** Displays a message box, modal or non-modal, with user interaction as 
+ * designed by the given parameters. Display is guaranteed to run on the EDT.
+ * The return type depends on whether the dialog is modal.
+ * 
+ * @param parent <code>Component</code> the component this message's 
+ *               display is related to; may be null
+ * @param title <code>String</code> dialog title; may be null      
+ * @param text <code>Object</code> text to display (<code>Component</code> 
+ *             or <code>String</code>); may be null
+ * @param msgType <code>MessageType</code> appearance quality            
+ * @param dlgType {@code ButtonBarModus} dialog type for button setup 
+ * @param modal boolean
+ * @return Object {@code MessageDialog} if modal == false, 
+ *         {@code DialogTerminationType} if modal == true,
+ *         null if EDT is blocked and this thread was interrupted 
+ */
+private static Object showMessage ( 
+					final Component parent, 
+		            final String title, 
+                    final Object text, 
+                    final MessageType msgType,
+                    final ButtonBarModus dlgType,
+                    final boolean modal )
+{
+   Window owner = parent == null ? GUIService.getMainFrame() : GUIService.getAncestorWindow(parent);
+   MessageDialog dlg[] = new MessageDialog[1];
    
    Runnable run = new Runnable() {
 		@Override
 		public void run() {
-		   MessageDialog dlg = new MessageDialog(owner, text, msgType, dlgType, true);
+		   MessageDialog dialog = new MessageDialog(owner, text, msgType, dlgType, modal);
 		   boolean singleButton = dlgType == ButtonBarModus.OK | 
 				   dlgType == ButtonBarModus.CONTINUE |
 				   dlgType == ButtonBarModus.SINGLE;
 		   String defTitle = singleButton ? "Information" : "Please Confirm";
 		   String hstr = title == null ? defTitle : title;
-		   dlg.setTitle(hstr);
-		   dlg.pack();
-		   dlg.setVisible(true);
-		   
-		   result[0] = dlg.getTerminationType();
+		   dialog.setTitle(hstr);
+		   dialog.pack();
+		   dialog.setVisible(true);
+		   dlg[0] = dialog;
 		}
    };
 
    try {
    	  GUIService.performOnEDT(run, true);
-	} catch (InvocationTargetException e) {
-		e.printStackTrace();
-	} catch (InterruptedException e) {
-		e.printStackTrace();
-	}
-
-   return result[0];
+   } catch (InvocationTargetException e) {
+	  e.printStackTrace();
+   } catch (InterruptedException e) {
+	  e.printStackTrace();
+   }
+   
+   return dlg[0] == null ? null : modal ? dlg[0].getTerminationType() : dlg[0];
 }
-
 /** Creates a message dialog of the given properties without showing it.
  *  
  * @param parent <code>Component</code> the component this message's 
