@@ -5,9 +5,9 @@ It covers a wide range of topics from simple small routines over Collection
 classes to larger utilities to address IO management, file safety and GUI 
 related tasks.
 
-=====================================
-UTIL-CLASSES 0-9-1 as of 09 Nov. 2023
-=====================================
+======================================
+UTIL-CLASSES 0-11-0 as of 03 Jan. 2024
+======================================
 
 Reference JVM version: 1.8.0 OpenJDK
 Available language versions: English
@@ -16,12 +16,13 @@ Author: Wolfgang Keller
 
 FILES IN THIS RELEASE:
 
-- PROGRAM -
-kse-util-cla1-0-10-0.jar, kse-util-cla2-0-10-0.jar
+- PROGRAMS -
+kse-util-cla1-0-11-0.jar, kse-util-cla2-0-11-0.jar
 
 - DEVELOPER PACKAGE -
-kse-utilcla-devel-0-10-0.zip contains the binaries, the source code, a Javadoc
+kse-utilcla-devel-0-11-0.zip contains the binaries, the source code, a Javadoc
 API documentation and all material required to compile the project. 
+kse-utilcla-src-0-11-0.zip contains the source code only.
 
 - REQUIREMENTS -
 The packages have no external requirements. 

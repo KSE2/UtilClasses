@@ -61,7 +61,7 @@ public class FontChooser extends GSDialog {
   private static final String[] SIZES =
       new String[] { "3", "4", "5", "6", "7", "8", "9", "10", "11", "12",
                      "13", "14", "15", "16", "17", "18", "19", "20", "22",
-                     "24", "27", "30", "34", "39", "45", "51", "60" };
+                     "24", "26", "28", "30", "33", "36", "39", "43", "47", "52", "60" };
 
   // Lists to display
   private NwList _styleList;
@@ -89,14 +89,16 @@ public class FontChooser extends GSDialog {
    * 
    * @return the newly chosen font or <b>null</b> if dialog was cancelled
    */
-  public static Font showDialog (Window parent, String title, Font font) {
+  public static Font showDialog (Component parent, String title, Font font) {
 	 Font chosenFont[] = new Font[1];
 	 Runnable run = new Runnable() {
 		@Override
 		public void run() {
-		    FontChooser fd = new FontChooser(parent, font);
+		    Window owner = parent == null ? GUIService.getMainFrame() : GUIService.getAncestorWindow(parent);
+		    FontChooser fd = new FontChooser(owner, font);
+			fd.setLocationRelativeTo(parent == null ? owner : parent);
 		    fd.setTitle(title);
-		    fd.setVisible(true);
+		    fd.setVisible();
 
 		    if ( fd.isOkPressed() ) {
 		      chosenFont[0] = fd.getFont();
@@ -150,7 +152,8 @@ public class FontChooser extends GSDialog {
        fName = "Dialog";
     }
     _fontList.setSelectedItem( fName );
-    _sizeList.setSelectedItem( String.valueOf( font.getSize() ));
+    String sizeItem = getSizeItem(font.getSize());
+    _sizeList.setSelectedItem( sizeItem );
     _styleList.setSelectedItem( STYLES[font.getStyle()] );
     
     DialogPerformBlock block = new DialogPerformBlock() {
@@ -171,15 +174,25 @@ public class FontChooser extends GSDialog {
     pack();
 
     Component parent = getParent();
-    if (getParent() == null) {
-    	parent = getOwner();
-    }
-    if (parent != null) {
-    	setLocationRelativeTo(parent);
-    }
+   	setLocationRelativeTo(parent == null ? getOwner() : parent);
   }  // initAll
 
-  private void showSample () {
+  /** Returns the largest item in SIZES which is smaller than or equal to
+   * the argument size value.
+   * 
+   * @param size int lookup value
+   * @return String value from SIZES
+   */
+  private String getSizeItem (int size) {
+	  String val = String.valueOf(size);
+	  for (int i = SIZES.length; i > 0; i--) {
+		  String s = SIZES[i-1];
+		  if (s.compareTo(val) <= 0) return s;
+	  }
+	  return SIZES[0];
+  }
+
+private void showSample () {
     int g = 0;
     try {
       g = Integer.parseInt(_sizeList.getSelectedValue());

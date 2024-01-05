@@ -70,6 +70,7 @@ public class TestC_LayeredFileSafe {
 		assertNull("name must be null initially", safe.getName());
 		assertTrue("time now zero expected", safe.getTimeNow() == 0);
 		assertFalse("contains error", safe.contains(new File("aberystwyth")));
+		assertFalse("contains error", safe.contains(null));
 		
 		// some settings
 		String name = "Aberystwyth";
@@ -124,17 +125,17 @@ public class TestC_LayeredFileSafe {
 
 		int nrSlots = safe.getNrSolts();
 		assertTrue("nr of slots", nrSlots == days + months + years);
-		assertTrue("nr of time-slots", safe.getSlotTimes().length == nrSlots);
+//		assertTrue("nr of time-slots", safe.getSlotTimes().length == nrSlots);
 		assertTrue("nr of deltas", safe.getDeltas().length == nrSlots);
 		assertTrue("history not empty", safe.getHistory(File.createTempFile("test-", ".dat")).length == 0);
 		assertTrue("directory error", safe.getDirectory().equals(dir));
 		assertNotNull("getFiles() is null", safe.getFiles());
 		assertTrue("getFiles() not empty", safe.getFiles().length == 0);
 
-		// all slot times are zero
-		for (Long t : safe.getSlotTimes()) {
-			assertTrue("initial slot time", t == 0);
-		}
+//		// all slot times are zero
+//		for (Long t : safe.getSlotTimes()) {
+//			assertTrue("initial slot time", t == 0);
+//		}
 		
 		// all deltas are not zero and ascending values
 		int prev = 0;
@@ -162,23 +163,34 @@ public class TestC_LayeredFileSafe {
 		safe.report();
 
 		File f1 = File.createTempFile("lsafe-", ".dat");
+		String fcontent = "Niemand wußte mehr bescheid .. als der Bär!";
+		Util.writeTextFile(f1, fcontent, "UTF-8");
 		safe.storeFile(f1);
-		assertTrue("number of files (storeFile)", safe.getHistory(f1).length == 1);
+		assertTrue("contains error", safe.contains(f1));
+		assertTrue("number of files (stored)", safe.getFiles().length == 1);
+		assertTrue("object files error", safe.getFiles()[0].equals(f1));
+		assertTrue("number of files (history)", safe.getHistory(f1).length == 1);
 		
 		Log.log(1, "TEST: time-now = 1 days");
 		safe.setTimeNow(tm + Util.TM_DAY + 30*Util.TM_MINUTE);
 		safe.storeFile(f1);
 		safe.report();
+		assertTrue("contains error", safe.contains(f1));
+		assertTrue("number of object files", safe.getFiles().length == 1);
+		assertTrue("object files error", safe.getFiles()[0].equals(f1));
+		assertTrue("number of files (history)", safe.getHistory(f1).length == 2);
 
 		Log.log(1, "TEST: time-now = 2 days");
 		safe.setTimeNow(tm + 2*Util.TM_DAY + 30*Util.TM_MINUTE);
 		safe.storeFile(f1);
 		safe.report();
+//		assertTrue("number of files (history)", safe.getHistory(f1).length == 3);
 
 		Log.log(1, "TEST: time-now = 3 days");
 		safe.setTimeNow(tm + 3*Util.TM_DAY + 30*Util.TM_MINUTE);
 		safe.storeFile(f1);
 		safe.report();
+		assertTrue("number of files (history)", safe.getHistory(f1).length == 3);
 
 		Log.log(1, "TEST: time-now = 4 days");
 		safe.setTimeNow(tm + 4*Util.TM_DAY + 30*Util.TM_MINUTE);
@@ -216,6 +228,7 @@ public class TestC_LayeredFileSafe {
 		safe.report();
 
 		File f1 = File.createTempFile("lsafe-", ".dat");
+		long fileTime = f1.lastModified();
 		safe.storeFile(f1);
 		assertTrue("number of files (storeFile)", safe.getHistory(f1).length == 1);
 		
@@ -229,29 +242,41 @@ public class TestC_LayeredFileSafe {
 		safe.promote(f1);
 		safe.report();
 
-		Log.log(1, "TEST: time-now = 4 days");
+		Log.log(1, "TEST: time-now = 4 days, new entry");
 		safe.setTimeNow(tm + 4*Util.TM_DAY + 30*Util.TM_MINUTE);
-		safe.promote(f1);
+		safe.storeFile(f1);
 		safe.report();
 
 		Log.log(1, "TEST: time-now = 5 days");
 		safe.setTimeNow(tm + 5*Util.TM_DAY + 30*Util.TM_MINUTE);
-		safe.promote(f1);
+		safe.storeFile(f1);
 		safe.report();
 
 		Log.log(1, "TEST: time-now = 6 days");
 		safe.setTimeNow(tm + 6*Util.TM_DAY + 30*Util.TM_MINUTE);
-		safe.promote(f1);
+		safe.storeFile(f1);
 		safe.report();
 
 		Log.log(1, "TEST: time-now = 30 days");
 		safe.setTimeNow(tm + 30*Util.TM_DAY + 30*Util.TM_MINUTE);
-		safe.promote(f1);
+		safe.storeFile(f1);
 		safe.report();
 
 		Log.log(1, "TEST: time-now = 31 days");
 		safe.setTimeNow(tm + 31*Util.TM_DAY + 30*Util.TM_MINUTE);
-		safe.promote(f1);
+		safe.storeFile(f1);
+		safe.report();
+
+		Log.log(1, "TEST: time-now = 91 days");
+		safe.setTimeNow(tm + 91*Util.TM_DAY + 30*Util.TM_MINUTE);
+		safe.promote();
+//		safe.storeFile(f1);
+		safe.report();
+
+		Log.log(1, "TEST: time-now = 731 days");
+		safe.setTimeNow(tm + 731*Util.TM_DAY + 30*Util.TM_MINUTE);
+		safe.promote();
+//		safe.storeFile(f1);
 		safe.report();
 
 		

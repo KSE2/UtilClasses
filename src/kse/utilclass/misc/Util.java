@@ -1028,6 +1028,7 @@ public class Util {
 	         if (carryTime) {
 	        	 copy.setLastModified( time );
 	         }
+	         
 	         // control copy file CRC
 	         in = new FileInputStream(copy);
 	         crcSum = new CRC32();
@@ -1306,6 +1307,25 @@ public class Util {
 		}
 	}
 	
+	/** Tests whether the given directory can be accessed by the calling thread
+	 * in order to create a new file. Returns false if the argument is null or
+	 * not a directory.
+	 * 
+	 * @param dir File directory, may be null
+	 * @return boolean true = can write to dir, false = unable to write
+	 */
+    public static boolean testCanWrite (File dir) {
+    	if (dir != null && dir.isDirectory()) {
+    		try {
+				File f = File.createTempFile("test-", ".file", dir);
+				f.delete();
+				return true;
+			} catch (IOException | SecurityException e) {
+			}
+    	}
+    	return false;
+    }
+
 	/** Writes a given String text to a given file using the given character
 	 * encoding. An existing file will be overwritten.
 	 *  
@@ -1973,6 +1993,42 @@ public class Util {
 		return sbuf.toString();
 	}
 	
+	
+	/** Removes typical HTML contained text which is out-commented with 
+	 * "{@code <!-- .. -->}" brackets and returns the cleared result. The length of
+	 * result is equal to or lower than the length of the argument. 
+	 * 
+	 * @param text String Html text
+	 * @return cleared argument text
+	 */
+	public static String removeHtmlComments (String text) {
+		String result = text;
+		if (text != null) {
+			int index = 0;
+			String work = text;
+			StringBuffer sbuf = null;
+			while (index > -1) {
+				index = work.indexOf("<!--");
+				if (index > -1) {
+					if (sbuf == null) {
+						sbuf = new StringBuffer(1024);
+					}
+					sbuf.append(work.substring(0, index));
+					work = work.substring(index+4);
+					index = work.indexOf("-->");
+					if (index > -1) {
+						work = work.substring(index+4);
+					}
+				}
+			}
+			if (sbuf != null) {
+				sbuf.append(work);
+				result = sbuf.toString();
+			}
+		}
+		return result;
+	}
+	
 	/** Returns the CRC32 of the given properties set of entries as a 32-bit
 	 *  int value.
 	 * 
@@ -2416,11 +2472,11 @@ public class Util {
 		InputStream stream;
 		OutputStream out;
 		final File zipF;
-		boolean smallSize = length <= MEGA;
+		boolean smallSize = length <= 10*MEGA;
 		
 		// create an appropriate output stream (buffered data)
 		if (smallSize) {
-			out = new ByteArrayOutputStream((int)length);
+			out = new DirectByteOutputStream((int)length);
 			zipF = null;
 		} else {
 		    zipF = File.createTempFile("Util-", ".dat");
@@ -2445,7 +2501,8 @@ public class Util {
 	    // create the new input stream
 	    if (smallSize) {
 	    	// create memory block read stream
-	    	stream = new ByteArrayInputStream(((ByteArrayOutputStream)out).toByteArray());
+	    	DirectByteOutputStream bout = (DirectByteOutputStream) out;
+	    	stream = new ByteArrayInputStream(bout.getBuffer(), 0, bout.size());
 	    } else {
 		    // open the ZIP-file as input stream
 		    stream = new FileInputStream(zipF) {

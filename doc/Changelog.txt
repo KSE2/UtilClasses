@@ -1,6 +1,22 @@
 Project UtilClasses
 CHANGELOG 
 
+*** Release V 0-11-0 ***, 03. Jan. 2024
+Changes since version 0-10-0
+
+New class JAXB_Service contains parts moved from class IOService which deal
+with JAXB functionality. (Background is JAXB is no longer supported by Java
+above version 8.) Class IOService is stripped off its JAXB references.
+
+New class DirectByteOutputStream allowing access to ByteOutputStream 's
+buffer data without recreating it. Redesigned behaviour of file storage
+in LayeredFileSafe which greatly enhances time accuracy.
+Improvements to MirrorFileManager enhancing stability in error cases.
+
+Minor changes to ColorChooser and FontChooser concerning window 
+positioning and internationality. New class AmpleEditorPane which is marked
+experimental.
+
 *** Release V 0-10-0 ***, 09. Nov. 2023
 Changes since version 0-9-1
 

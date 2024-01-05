@@ -102,7 +102,7 @@ public void test_instantiate_errors () {
 }
     
 @Test    
-public void test_instantiate_1 () {
+public void test_instantiate_1 () throws IOException {
     int threadPriority = Thread.currentThread().getPriority();
     MirrorFileManager mm = new MirrorFileManager( baseDir, 30 );
     assertTrue( "false root directory reported", mm.getMirrorRootDirectory().equals(baseDir) );
@@ -114,7 +114,7 @@ public void test_instantiate_1 () {
 }
 
 @Test    
-public void test_instantiate_2 () {
+public void test_instantiate_2 () throws IOException {
     int threadPriority = Thread.MIN_PRIORITY ;
     MirrorFileManager mm = new MirrorFileManager( baseDir, 30, threadPriority );
     assertTrue( "false root directory reported", mm.getMirrorRootDirectory().equals(baseDir) );
@@ -126,7 +126,7 @@ public void test_instantiate_2 () {
 }
 
 @Test
-public void test_minor_settings () {
+public void test_minor_settings () throws IOException {
     MirrorFileManager mm = new MirrorFileManager( baseDir, 30, Thread.MIN_PRIORITY );
     mm.setCheckPeriod(200);
     assertTrue( "false check period after setting", mm.getCheckPeriod() == 200 );
@@ -149,7 +149,7 @@ public void test_minor_settings () {
 }
 
 @Test
-public void test_add_listeners () {
+public void test_add_listeners () throws IOException {
     MirrorFileManager mm = new MirrorFileManager( baseDir, 30 );
     OperationListener li1, li2;
     
@@ -169,7 +169,7 @@ public void test_add_listeners () {
 }
 
 @Test
-public void test_remove_listeners () {
+public void test_remove_listeners () throws IOException {
     MirrorFileManager mm = new MirrorFileManager( baseDir, 30 );
     OperationListener li1, li2, li3;
     
@@ -215,7 +215,7 @@ private byte[] getFileData ( File f ) throws IOException {
 }
 
 @Test
-public void test_add_mirrorables () throws InterruptedException {
+public void test_add_mirrorables () throws InterruptedException, IOException {
     MirrorFileManager mm = new MirrorFileManager( baseDir, 30 );
     mm.addOperationListener(new OurOperationListener("Alpha"));
     
@@ -249,7 +249,7 @@ public void test_add_mirrorables () throws InterruptedException {
 }
 
 @Test
-public void test_remove_mirrorables () throws InterruptedException {
+public void test_remove_mirrorables () throws InterruptedException, IOException {
     MirrorFileManager mm = new MirrorFileManager( baseDir, 30 );
     mm.addOperationListener(new OurOperationListener("Alpha"));
     
@@ -294,7 +294,7 @@ public void test_remove_mirrorables () throws InterruptedException {
 }
 
 @Test
-public void test_current_mirrors () throws InterruptedException {
+public void test_current_mirrors () throws InterruptedException, IOException {
     MirrorFileManager mm = new MirrorFileManager( baseDir, 1 );
     mm.addOperationListener(new OurOperationListener("Alpha"));
     

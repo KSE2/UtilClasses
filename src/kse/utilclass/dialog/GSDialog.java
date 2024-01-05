@@ -53,7 +53,7 @@ public class GSDialog extends JDialog {
 	
 
 	public GSDialog (Window owner, ButtonBarModus dlgType, boolean modal) {
-		super(owner);
+		super(owner == null ? GUIService.getMainFrame() : owner);
 		setModal(modal);
 		Objects.requireNonNull(dlgType);
 		buttonBarModus = dlgType;
@@ -282,6 +282,12 @@ public class GSDialog extends JDialog {
 			setLocationRelativeTo(getOwner());
 		}
 		super.setVisible(v);
+	}
+	
+	/** Sets this dialog visible (true) without relocating it.
+	 */
+	public void setVisible () {
+		super.setVisible(true);
 	}
 	
     /** Sets whether this dialog can be closed by the ESCAPE button.

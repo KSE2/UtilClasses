@@ -1,6 +1,8 @@
 
 package kse.utilclass.gui;
 
+import java.awt.Color;
+
 /*
 *  File: AmpleTextArea.java
 * 
@@ -35,7 +37,11 @@ import java.awt.event.InputEvent;
 import java.awt.event.KeyEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
-import java.awt.print.PrinterException;
+import java.beans.PropertyChangeEvent;
+import java.beans.PropertyChangeListener;
+import java.io.IOException;
+import java.io.StringWriter;
+import java.net.URL;
 import java.text.DateFormat;
 import java.util.ArrayList;
 import java.util.Date;
@@ -50,7 +56,7 @@ import java.util.concurrent.Executor;
 
 import javax.swing.AbstractAction;
 import javax.swing.Action;
-import javax.swing.JCheckBoxMenuItem;
+import javax.swing.JEditorPane;
 import javax.swing.JMenu;
 import javax.swing.JMenuItem;
 import javax.swing.JPopupMenu;
@@ -64,21 +70,25 @@ import javax.swing.text.AbstractDocument;
 import javax.swing.text.BadLocationException;
 import javax.swing.text.DefaultEditorKit;
 import javax.swing.text.Document;
+import javax.swing.text.EditorKit;
 import javax.swing.text.JTextComponent;
 import javax.swing.text.Keymap;
+import javax.swing.text.MutableAttributeSet;
+import javax.swing.text.StyleConstants;
+import javax.swing.text.StyledEditorKit;
 import javax.swing.text.TextAction;
-import javax.swing.undo.CannotRedoException;
-import javax.swing.undo.CannotUndoException;
+import javax.swing.text.html.HTMLEditorKit;
 import javax.swing.undo.CompoundEdit;
 import javax.swing.undo.UndoManager;
 import javax.swing.undo.UndoableEdit;
 
 import kse.utilclass.dialog.GUIService;
+import kse.utilclass.lists.SortedArrayList;
 import kse.utilclass.misc.Log;
 import kse.utilclass.misc.Util;
 
 /**
- * This extension of <code>JTextArea</code> adds the following features to the
+ * This extension of <code>JEditorPane</code> adds the following features to the
  * editor field.
  * 
  * <p>1. Undo/Redo manager with 100 operations stack and a time based text
@@ -93,6 +103,8 @@ import kse.utilclass.misc.Util;
  * date localised), CTRL-F (current time localised)
  * CTRL-PLUS (increase font size), CTRL-MINUS (decrease font size). 
  * 
+ * <p>
+ * 
  * <p>With {@code getMenuActions()} the list of available menu actions can be
  * obtained and modified. This is the way to add individual items to the 
  * popup menu of this component. This class does not define a help action
@@ -100,10 +112,18 @@ import kse.utilclass.misc.Util;
  * ActionNames.HELP.
  */
 
-public class AmpleTextArea extends JTextArea implements MenuActivist {
-   private static final int DEFAULT_EDIT_AGGLO_TIME = 1000; 
+public class AmpleEditorPane extends JEditorPane implements MenuActivist {
+
+   /** Styled documents are shown either in their source code or as the
+    * defined surface.
+    */
+   public enum StyledViewMode {SURFACE, SOURCE}
+	
+   protected static final int DEFAULT_EDIT_AGGLO_TIME = 1000; 
+   private static final int[] FONT_SIZE_STEPS = new int[] {8, 10, 12, 14, 18, 24, 36, 48};
    private static HashMap<Object, Action> actionLookup;
    private static Timer timer = new Timer();
+	
    
    protected ActionListener actions = new ATA_Action();
    private List<Action> menuActions;
@@ -115,69 +135,100 @@ public class AmpleTextArea extends JTextArea implements MenuActivist {
 		   r.run();
 	   }
    };
-   
+
    private Window owner;
+//   private StyledViewMode viewMode = StyledViewMode.SURFACE; 
    private Dimension selection;
+   private Color[] colorOptions;
    private boolean isPopupActive = true;
    private boolean modified;
 
-   /** Creates a AmpleTextArea with the given component name.
+   /** Creates an empty AmpleEditorPane with the given component name.
     * 
     * @param name String component name
     */
-	public AmpleTextArea ( String name ) {
+	public AmpleEditorPane (String name) {
 	   super();
 	   init( name );
 	}
 	
-	public AmpleTextArea ( String name, int rows, int columns ) {
-	   super( rows, columns );
-	   init( name );
-	}
-	
-    /** Creates a AmpleTextArea with the given component name and
-     * initial field text. 
+    /**
+     * Creates a <code>AmpleEditorPane</code> based on a string containing
+     * a URL specification.
+     *
+     * @param url URL of document
+     * @exception IOException if the URL is <code>null</code> or cannot be 
+     *            accessed
+     */
+    public AmpleEditorPane (String name, String url) throws IOException {
+    	super(url);
+    	init(name);
+    }
+    
+    /** 
+     * Creates a AmpleEditorPane with the given component name and initial text
+     * of a specified type. This is a convenience constructor that calls the
+     * <code>setContentType</code> and <code>setText</code> methods.
      * 
      * @param name String component name
+     * @param type mime type of the given text
      * @param text String initial text
      */
-	public AmpleTextArea ( String name, String text ) {
-	   super( text );
-	   init( name );
+	public AmpleEditorPane (String name, String type, String text) {
+	   super(type, text);
+	   init(name);
 	}
 	
-	public AmpleTextArea ( String name, String text, int rows, int columns ) {
-	   super( text, rows, columns );
-	   init( name );
-	}
-	
-	public AmpleTextArea ( String name, Document doc ) {
-	   super( doc );
-	   init( name );
-	}
-	
-	public AmpleTextArea ( String name, Document doc, String text, 
-			               int rows, int columns ) {
-	   super( doc, text, rows, columns );
-	   init( name );
+    /**
+     * Creates a <code>JEditorPane</code> based on a specified URL for input.
+     *
+     * @param name String component name
+     * @param initialPage URL
+     * @exception IOException if the URL is <code>null</code> or cannot be 
+     *            accessed
+     */
+    public AmpleEditorPane (String name, URL initialPage) throws IOException {
+    	super(initialPage);
+    	init(name);
+    }
+    
+	public AmpleEditorPane ( String name, Document doc ) {
+	   super();
+	   setDocument(doc);
+	   init(name);
 	}
 	
 	private void init ( String name ) {
+	   // preset action lookup (static)
 	   if ( actionLookup == null ) {
 	      // put default actions in a Hashtable so we can retrieve them w/ Action.NAME
 	      actionLookup = new HashMap<Object, Action>();
-	      for (Action a : getActions()) {
-	        actionLookup.put(a.getValue(Action.NAME), a);
-//	        System.out.println( "-- TextArea Action: " + a.getValue(Action.NAME) );
+	      List<String> list = new SortedArrayList<>();
+	      for (Action a : new HTMLEditorKit().getActions()) {
+	    	    String hstr = (String) a.getValue(Action.NAME);
+	    	    list.add(hstr);
+		        actionLookup.put(hstr, a);
+		  }
+	      
+	      // report
+	      for (String s : list) {
+		      System.out.println( "-- HTMLEditorKit Action: " + s );
 	      }
 	   }
 	
 	   setName(name);
 	   setLocale(Locale.getDefault());
-	   addMouseListener( popupListener );
-	   getDocument().addUndoableEditListener( undoManager );
+	   addMouseListener(popupListener);
+	   getDocument().addUndoableEditListener(undoManager);
 	   getDocument().addDocumentListener(new DocListener());
 	   modifyKeystrokes ();
+	   
+	   addPropertyChangeListener( new PropertyChangeListener() {
+		  @Override
+		  public void propertyChange(PropertyChangeEvent evt) {
+			  Log.debug(6, "(AmpleEditorPane) property change: " + evt.getPropertyName());
+		  }
+	   });
 	   
 	   addFocusListener(new FocusAdapter() {
 
@@ -195,9 +246,10 @@ public class AmpleTextArea extends JTextArea implements MenuActivist {
 		   }
 	   });
 	
-	   setWrapStyleWord(true);
-	   Log.debug(10, "(AmpleTextArea.init) text font = " + getFont());
+	   Log.debug(10, "(AmpleEditorPane.init) text font = " + getFont());
 	}
+	
+	
 	
 	private void modifyKeystrokes () {
 	   Keymap parent, map;
@@ -253,8 +305,20 @@ public class AmpleTextArea extends JTextArea implements MenuActivist {
 	   map.addActionForKeyStroke(key,  new ATA_Action( "keystroke.CTRL-F" ));
 	
 	   // add CTRL-U: insert current date+time (UT) action 
+	   key = KeyStroke.getKeyStroke( KeyEvent.VK_G, InputEvent.CTRL_MASK );
+	   map.addActionForKeyStroke(key, new ATA_Action( "keystroke.CTRL-G" ));
+	
+	   // add CTRL-B: font style Bold action 
+	   key = KeyStroke.getKeyStroke( KeyEvent.VK_B, InputEvent.CTRL_MASK );
+	   map.addActionForKeyStroke(key, new ATA_Action( "keystroke.CTRL-B" ));
+	
+	   // add CTRL-U: font style Underlined action 
 	   key = KeyStroke.getKeyStroke( KeyEvent.VK_U, InputEvent.CTRL_MASK );
 	   map.addActionForKeyStroke(key, new ATA_Action( "keystroke.CTRL-U" ));
+	
+	   // add CTRL-I: font style Italic action 
+	   key = KeyStroke.getKeyStroke( KeyEvent.VK_I, InputEvent.CTRL_MASK );
+	   map.addActionForKeyStroke(key, new ATA_Action( "keystroke.CTRL-I" ));
 	
 //	   // add F1: Help - user supplied) action 
 //	   key = KeyStroke.getKeyStroke( KeyEvent.VK_F1, 0 );
@@ -313,6 +377,21 @@ public class AmpleTextArea extends JTextArea implements MenuActivist {
 		super.setDocument(doc);
 	}
 
+//	public void setStyledViewMode (StyledViewMode mode) {
+//		Objects.requireNonNull(mode);
+//   	 	Log.log(10, "(AmpleEditorPane) setting styled-view-mode = " + mode);
+//		
+//   	 	
+//	}
+//
+//	public StyledViewMode getStyledViewMode () {return viewMode;}
+//	
+//	public void toggleStyledViewMode () {
+//		StyledViewMode mode = viewMode == StyledViewMode.SOURCE ? 
+//				StyledViewMode.SURFACE : StyledViewMode.SOURCE;
+//		setStyledViewMode(mode);
+//	}
+	
 	@Override
 	public void select (int selectionStart, int selectionEnd) {
 		super.select(selectionStart, selectionEnd);
@@ -329,6 +408,11 @@ public class AmpleTextArea extends JTextArea implements MenuActivist {
 	 */
 	public boolean isModified () {
 		return modified;
+	}
+	
+	public boolean isHtmlType () {
+		String hs = getContentType(); 
+		return hs == null ? false : hs.indexOf("html") > -1;
 	}
 	
 	/** Resets the MODIFIED status of the document to <b>false</b>.
@@ -369,26 +453,27 @@ public class AmpleTextArea extends JTextArea implements MenuActivist {
 	   return isPopupActive;
 	}
 	
-	/** Returns the text of the line where the caret is currently positioned.
-	 * 
-	 *  @return String line text or <b>null</b> if unavailable 
-	 */
-	public String getCurrentLine () {
-	   String text;
-	   int cp, line, offs;
-	   
-	   cp = getCaretPosition();
-	   try { 
-	      line = getLineOfOffset(cp); 
-	      offs = getLineStartOffset(line);
-	      text = getText( offs, getLineEndOffset(line) - offs );
-	      return text;
-	   } 
-	   catch (BadLocationException e) {
-	      e.printStackTrace();
-	      return null;
-	   }
-	}
+//	/** Returns the text of the line where the caret is currently positioned.
+//	 * 
+//	 *  @return String line text or <b>null</b> if unavailable 
+//	 */
+//	public String getCurrentLine () {
+//	   String text;
+//	   int cp, line, offs;
+//
+//	   cp = getCaretPosition();
+//	   try { 
+//	      line = getLineOfOffset(cp); 
+//	      offs = getLineStartOffset(line);
+//	      text = getText( offs, getLineEndOffset(line) - offs );
+//	      return text;
+//	   } 
+//	   catch (BadLocationException e) {
+//	      e.printStackTrace();
+//	      return null;
+//	   }
+//		return null;
+//	}
 	
 	/** Renders the valid text range for operations that assume the 
 	 * entire field if nothing is selected, but the user selection otherwise.
@@ -420,6 +505,18 @@ public class AmpleTextArea extends JTextArea implements MenuActivist {
        return start == end ? null : new Dimension(start, end);
 	}
 	
+	/** Returns the first component in the component hierarchy which is of
+	 * type {@code Window}, i.e. the Dialog or the Frame containing this pane.
+	 * 
+	 * @return {@code Window}
+	 */
+	protected Window getOwner () {
+		if (owner == null) {
+			owner = GUIService.getAncestorWindow(this);
+		}
+		return owner;
+	}
+	
 	/** Returns an international text for a given token.
 	 * Currently we serve English.
 	 * 
@@ -440,18 +537,46 @@ public class AmpleTextArea extends JTextArea implements MenuActivist {
 				h = "Ausschneiden";
 			} else if (token.equals( ActionNames.DELETE )) {
 				h = "Löschen";
-			} else if (token.equals( ActionNames.LINE_WRAP )) {
-				h = "Zeilenumbruch";
+			} else if (token.equals( ActionNames.BOLD )) {
+				h = "Fett";
+			} else if (token.equals( ActionNames.ITALIC )) {
+				h = "Kursiv";
+			} else if (token.equals( ActionNames.UNDERLINE )) {
+				h = "Unterstrichen";
+			} else if (token.equals( ActionNames.MONOSPACED )) {
+				h = "Monospaced";
+			} else if (token.equals( ActionNames.SERIF )) {
+				h = "Serif";
+			} else if (token.equals( ActionNames.SANS_SERIF )) {
+				h = "Sans Serif";
+			} else if (token.equals( ActionNames.FONT_FAMILY )) {
+				h = "Familie";
+			} else if (token.equals( ActionNames.FONT_COLOR )) {
+				h = "Farbe";
+			} else if (token.equals( ActionNames.FOREGROUND )) {
+				h = "Vordergrund";
+			} else if (token.equals( ActionNames.BACKGROUND )) {
+				h = "Hintergrund";
+			} else if (token.equals( ActionNames.INCREASE_FONT )) {
+				h = "Vergrößern";
+			} else if (token.equals( ActionNames.DECREASE_FONT )) {
+				h = "Verkleinern";
 			} else if (token.equals( ActionNames.SELECT_ALL )) {
 				h = "Alles auswählen";
 			} else if (token.equals( ActionNames.PRINT )) {
 				h = "Drucken";
+			} else if (token.equals( ActionNames.FONT )) {
+				h = "Schrift";
 			} else if (token.equals( ActionNames.HELP )) {
 				h = "Hilfe";
+			} else if (token.equals( "title.fontchooser" )) {
+				h = "Schrift-Auswahl";
 			} else if (token.equals( "msg.ask.longlineswrap" )) {
 				h = "Zeilenumbruch anwenden für besseres Ergebnis? (empfohlen)";
 			} else if (token.equals( "msg.fail.noexecutor" )) {
 				h = "Es fehlt ein Executor für den Druckauftrag!";
+			} else if (token.equals( "menu.style" )) {
+				h = "Stil";
 			}
 
 		// English is default language
@@ -464,18 +589,48 @@ public class AmpleTextArea extends JTextArea implements MenuActivist {
 				h = "Cut";
 			} else if (token.equals( ActionNames.DELETE )) {
 				h = "Delete";
-			} else if (token.equals( ActionNames.LINE_WRAP )) {
-				h = "Line Wrap";
+			} else if (token.equals( ActionNames.BOLD )) {
+				h = "Bold";
+			} else if (token.equals( ActionNames.ITALIC )) {
+				h = "Italic";
+			} else if (token.equals( ActionNames.UNDERLINE )) {
+				h = "Underline";
+			} else if (token.equals( ActionNames.MONOSPACED )) {
+				h = "Monospaced";
+			} else if (token.equals( ActionNames.SERIF )) {
+				h = "Serif";
+			} else if (token.equals( ActionNames.SANS_SERIF )) {
+				h = "Sans Serif";
+			} else if (token.equals( ActionNames.FONT_FAMILY )) {
+				h = "Family";
+			} else if (token.equals( ActionNames.FONT_COLOR )) {
+				h = "Color";
+			} else if (token.equals( ActionNames.FOREGROUND )) {
+				h = "Foreground";
+			} else if (token.equals( ActionNames.BACKGROUND )) {
+				h = "Background";
+			} else if (token.equals( ActionNames.INCREASE_FONT )) {
+				h = "Larger";
+			} else if (token.equals( ActionNames.DECREASE_FONT )) {
+				h = "Smaller";
+//			} else if (token.equals( ActionNames.LINE_WRAP )) {
+//				h = "Line Wrap";
 			} else if (token.equals( ActionNames.SELECT_ALL )) {
 				h = "Select All";
 			} else if (token.equals( ActionNames.PRINT )) {
 				h = "Print";
+			} else if (token.equals( ActionNames.FONT )) {
+				h = "Font";
 			} else if (token.equals( ActionNames.HELP )) {
 				h = "Help";
+			} else if (token.equals( "title.fontchooser" )) {
+				h = "Font Selection";
 			} else if (token.equals( "msg.ask.longlineswrap" )) {
 				h = "Apply Line-Wrap to improve rendering? (recommended)";
 			} else if (token.equals( "msg.fail.noexecutor" )) {
 				h = "There is no executor for the Print task!";
+			} else if (token.equals( "menu.style" )) {
+				h = "Style";
 			}
 		}
 		
@@ -518,15 +673,112 @@ public class AmpleTextArea extends JTextArea implements MenuActivist {
 		return null;
 	}
 	
+//	private static class SizeRelatedName {
+//		int size;
+//		String name;
+//		
+//		SizeRelatedName (int size, String name) {
+//			this.size = size;
+//			this.name = name;
+//		}
+//	}
+	
+	private void setFontFamilyFunction () {
+	   HTMLEditorKit kit = (HTMLEditorKit)getEditorKit();
+	   MutableAttributeSet set = kit.getInputAttributes();
+	   String name = StyleConstants.getFontFamily(set);
+	   int size = StyleConstants.getFontSize(set);
+	   Font font = Font.decode(name + "-" + size);
+	   String hstr = font == null ? " -- font == null for " : ""; 
+	   Log.debug(10, "(AmpleEditorPane) -- setting FONT FONT_FAMILY: " + hstr + name + " - " + size);
+
+	   font = FontChooser.showDialog(getOwner(), getIntl("title.fontchooser"), font);
+	   if (font != null) {
+	   	  StyledEditorKit.FontFamilyAction a = new StyledEditorKit.FontFamilyAction("TEST", font.getFamily());
+	      a.actionPerformed(null);
+	   }
+	}
+	
+	private void setFontColorFunction () {
+	   HTMLEditorKit kit = (HTMLEditorKit)getEditorKit();
+	   MutableAttributeSet set = kit.getInputAttributes();
+	   Color color = StyleConstants.getForeground(set);
+
+	   color = ColorChooserDialog.showDialog(getOwner(), null, colorOptions, color);
+	   if (color != null) {
+	   	  StyledEditorKit.ForegroundAction a = new StyledEditorKit.ForegroundAction("TEST", color);
+	      a.actionPerformed(null);
+	   }
+	}
+		
 	public void increaseFont () {
-  	   Font font = getFont();
-  	   setFont( font.deriveFont(font.getSize2D() + 1) );
+	   if (isHtmlType()) {
+//		   Dimension sel = getUserSelection();
+//		   if (sel == null) return;
+
+		   HTMLEditorKit kit = (HTMLEditorKit)getEditorKit();
+		   MutableAttributeSet set = kit.getInputAttributes();
+		   int size = StyleConstants.getFontSize(set);
+
+		   // normalised next font size
+		   int next = size;
+		   for (int v : FONT_SIZE_STEPS) {
+			   if (v > size) {
+				   next = v;
+				   break;
+			   }
+		   }
+		   Log.debug(10, "(AmpleEditorPane.increaseFont) -- font size = " + size + ", next = " + next);
+
+		   if (next > size) {
+			   Action a = actionLookup.get( "font-size-" + next );
+			   if (a != null) {
+//			   Action a = new StyledEditorKit.FontSizeAction("TEST", next);
+				   a.actionPerformed(new ActionEvent(this, 0, null));
+			   }
+		   }
+
+	   } else {
+		   // PLAIN-TEXT branch
+		   Font font = getFont();
+		   setFont( font.deriveFont(font.getSize2D() + 1) );
+	   }
 	}
 	
 	public void decreaseFont () {
-	  	   Font font = getFont();
-	  	   setFont( font.deriveFont(Math.max(4, font.getSize2D() - 1)) );
-		}
+	   if (isHtmlType()) {
+//		   Dimension sel = getUserSelection();
+//		   if (sel == null) return;
+
+		   HTMLEditorKit kit = (HTMLEditorKit)getEditorKit();
+		   MutableAttributeSet set = kit.getInputAttributes();
+		   int size = StyleConstants.getFontSize(set);
+		   Log.debug(10, "(AmpleEditorPane.decreaseFont) -- font size == " + size);
+
+		   // normalised previous font size
+		   int next = size;
+		   for (int i = FONT_SIZE_STEPS.length; i > 0; i--) {
+			   int v = FONT_SIZE_STEPS[i-1];
+			   if (v < size) {
+				   next = v;
+				   break;
+			   }
+		   }
+		   Log.debug(10, "(AmpleEditorPane.decreaseFont) -- font size = " + size + ", next = " + next);
+
+		   if (next < size) {
+			   Action a = actionLookup.get( "font-size-" + next );
+			   if (a != null) {
+				   a.actionPerformed(new ActionEvent(this, 0, null));
+			   }
+		   }
+		   
+	   } else {
+		   // PLAIN-TEXT branch
+		   Font font = getFont();
+		   setFont( font.deriveFont(font.getSize2D() - 1) );
+	   }
+	}
 		
 	/** Returns the editor action with the given command token from the 
 	 * given action list or null if such an action is not defined.
@@ -556,9 +808,22 @@ public class AmpleTextArea extends JTextArea implements MenuActivist {
 		menuActions.add(new ATA_Action(ActionNames.COPY));
 		menuActions.add(new ATA_Action(ActionNames.PASTE));
 		menuActions.add(new ATA_Action(ActionNames.DELETE));
+		menuActions.add(new ATA_Action(ActionNames.BOLD));
+		menuActions.add(new ATA_Action(ActionNames.ITALIC));
+		menuActions.add(new ATA_Action(ActionNames.UNDERLINE));
+		menuActions.add(new ATA_Action(ActionNames.MONOSPACED));
+		menuActions.add(new ATA_Action(ActionNames.SERIF));
+		menuActions.add(new ATA_Action(ActionNames.SANS_SERIF));
+		menuActions.add(new ATA_Action(ActionNames.FOREGROUND));
+		menuActions.add(new ATA_Action(ActionNames.BACKGROUND));
+		menuActions.add(new ATA_Action(ActionNames.FONT_FAMILY));
+		menuActions.add(new ATA_Action(ActionNames.FONT_COLOR));
+		menuActions.add(new ATA_Action(ActionNames.INCREASE_FONT));
+		menuActions.add(new ATA_Action(ActionNames.DECREASE_FONT));
 		
-		menuActions.add(new ATA_Action(ActionNames.LINE_WRAP));
+//		menuActions.add(new ATA_Action(ActionNames.LINE_WRAP));
 		menuActions.add(new ATA_Action(ActionNames.PRINT));
+		menuActions.add(new ATA_Action(ActionNames.FONT));
 		menuActions.add(new ATA_Action(ActionNames.SELECT_ALL));
 	}
 	
@@ -617,23 +882,116 @@ public class AmpleTextArea extends JTextArea implements MenuActivist {
 		   menu.add(act);
 	   }
 	
+	   // SUB-MENU "Style" (text formatting)
+	   JMenu sub = new JMenu(getIntl("menu.style"));
+	   act = extractActionFromList(alist, ActionNames.BOLD);
+	   if (act != null & isEditable()) {
+		   sub.add(act);
+	   }
+	   
+	   act = extractActionFromList(alist, ActionNames.ITALIC);
+	   if (act != null & isEditable()) {
+		   sub.add(act);
+	   }
+	   
+	   act = extractActionFromList(alist, ActionNames.UNDERLINE);
+	   if (act != null & isEditable()) {
+		   sub.add(act);
+	   }
+
+	   act = extractActionFromList(alist, ActionNames.MONOSPACED);
+	   if (act != null & isEditable()) {
+		   sub.addSeparator();
+		   sub.add(act);
+	   }
+
+	   act = extractActionFromList(alist, ActionNames.SERIF);
+	   if (act != null & isEditable()) {
+		   sub.add(act);
+	   }
+
+	   act = extractActionFromList(alist, ActionNames.SANS_SERIF);
+	   if (act != null & isEditable()) {
+		   sub.add(act);
+	   }
+
+	   if (sub.getMenuComponentCount() > 0 && isHtmlType()) {
+		   menu.addSeparator();
+		   menu.add(sub);
+	   }
+	   
+	   
+	   // SUB-MENU "Font" (text formatting)
+	   sub = new JMenu("Font");
+	   act = extractActionFromList(alist, ActionNames.FONT_FAMILY);
+	   if (act != null & isEditable()) {
+		   sub.add(act);
+	   }
+	   
+	   act = extractActionFromList(alist, ActionNames.FONT_COLOR);
+	   if (act != null & isEditable() && colorOptions != null) {
+		   sub.add(act);
+	   }
+	   
+	   act = extractActionFromList(alist, ActionNames.INCREASE_FONT);
+	   if (act != null & isEditable()) {
+		   sub.add(act);
+	   }
+	   
+	   act = extractActionFromList(alist, ActionNames.DECREASE_FONT);
+	   if (act != null & isEditable()) {
+		   sub.add(act);
+	   }
+	   
+	   if (sub.getMenuComponentCount() > 0 && isHtmlType()) {
+		   menu.add(sub);
+	   }
+	   
+	   Action bgdAction = extractActionFromList(alist, ActionNames.BACKGROUND);
+	   if (bgdAction != null & isEditable() && isHtmlType() && colorOptions != null) {
+		   menu.add(bgdAction);
+	   }
+	   
+//	   // line wrapping option
+//	   act = extractActionFromList(alist, ActionNames.LINE_WRAP);
+//	   if (act != null) {
+//		   item = new JCheckBoxMenuItem(act);
+//		   item.setSelected(getLineWrap());
+//		   menu.add( item );
+//	   }
+	
 	   if (menu.getMenuComponentCount() > menuSize) {
 		   menu.addSeparator();
 		   menuSize = menu.getMenuComponentCount();
-	   }
-	
-	   // line wrapping option
-	   act = extractActionFromList(alist, ActionNames.LINE_WRAP);
-	   if (act != null) {
-		   item = new JCheckBoxMenuItem(act);
-		   item.setSelected(getLineWrap());
-		   menu.add( item );
 	   }
 	
 	   // printing the text
 	   act = extractActionFromList(alist, ActionNames.PRINT);
 	   if (act != null) {
 		   menu.add( act );
+	   }
+	   
+	   // change font of editor (content type text/plain)
+	   act = extractActionFromList(alist, ActionNames.FONT);
+	   if (act != null && !isHtmlType()) {
+		   menu.add( act );
+	   }
+	   
+	   sub = new JMenu(getIntl(ActionNames.FONT_COLOR));
+		
+	   // editor foreground color
+	   act = extractActionFromList(alist, ActionNames.FOREGROUND);
+	   if (!isHtmlType() && act != null) {
+		   sub.add( act );
+	   }
+	   
+	   // editor background color
+	   if (!isHtmlType() && bgdAction != null) {
+		   sub.add( bgdAction );
+	   }
+
+	   if (sub.getMenuComponentCount() > 0) {
+		   menu.add(sub);
 	   }
 	   
 	   act = extractActionFromList(alist, ActionNames.SELECT_ALL);
@@ -673,13 +1031,13 @@ public class AmpleTextArea extends JTextArea implements MenuActivist {
 		return menu.getPopupMenu();
 	}
 	
-	/** Sets the owner for occasional message dialogs for the user.
-	 *  
-	 * @param owner Window
-	 */
-	public void setDialogOwner (Window owner) {
-	   this.owner = owner; 
-	}
+//	/** Sets the owner for occasional message dialogs for the user.
+//	 *  
+//	 * @param owner Window
+//	 */
+//	public void setDialogOwner (Window owner) {
+//	   this.owner = owner; 
+//	}
 	
 	/** Creates a new menu item which executes in this class'es 
 	 * <code>ATA_Action</code>. The name of the item is drawn from <code>
@@ -714,7 +1072,8 @@ public class AmpleTextArea extends JTextArea implements MenuActivist {
 	}
 	
 	/** Sets the executor for tasks in separate threads for this element. 
-	 * The executor is currently used for the printing job.
+	 * The executor is currently used only for the printing job. The default
+	 * executor executes synchronously. 
 	 * 
 	 * @param e {@code Executor}
 	 */
@@ -723,32 +1082,11 @@ public class AmpleTextArea extends JTextArea implements MenuActivist {
 		executor = e;
 	}
 	
-	public void startPrinting () {
-	   String hstr, name;
-	   int length;
-	   
-	   // set Attribute "LineWrap" to user option
-	   boolean hasLongLine = false;
-	   if ( !getLineWrap() ) {
-	      // check for cut lines
-	      int lines = getLineCount();
-	      for (int i = 0; i < lines; i++) {
-	         try { length = getLineEndOffset(i) - getLineStartOffset(i); }
-	         catch ( BadLocationException e1 ) 
-	         { length = 0; }
-	         hasLongLine |= length > 80;
-	         if (hasLongLine) break;
-	      }
-	      
-	      // ask user for line wrapping if we have a long line
-	      name = getName() == null ? "?" : getName();
-	      hstr = getIntl("msg.ask.longlineswrap");
-	      hstr = Util.substituteText(hstr, "$name", name);
-	      if (hasLongLine && GUIService.userConfirm(owner, hstr)) {
-	         setLineWrap( true );
-	      }
-	   }
+	public void setColorOptions (Color[] c1) {
+		colorOptions = c1;
+	}
 	
+	public void startPrinting () {
 	   // start a thread with the print job
        executor.execute( new PrintJob() );
 	}
@@ -800,16 +1138,18 @@ public class AmpleTextArea extends JTextArea implements MenuActivist {
 	   public void actionPerformed (ActionEvent e)  {
 	      String cmd = command == null ? e.getActionCommand() : command;
 	      if (cmd == null) return;
+	      boolean isHtml = isHtmlType();
 
 	      try {
-	      if (cmd.equals( ActionNames.LINE_WRAP )) {
-	         setLineWrap(!getLineWrap());
-	
-	      } else if (cmd.equals( ActionNames.DELETE )) {
+//	      if (cmd.equals( ActionNames.LINE_WRAP )) {
+//	         setLineWrap(!getLineWrap());
+//	
+//	      } else 
+	      if (cmd.equals( ActionNames.DELETE )) {
 	         try {
 	            Dimension adr = getUserSelection();
 	            if (adr != null & isEditable()) {
-	            	AmpleTextArea.this.getDocument().remove(adr.width, adr.height-adr.width);
+	            	AmpleEditorPane.this.getDocument().remove(adr.width, adr.height-adr.width);
 		     	    selection = null;
 	            }
 	         } catch ( BadLocationException e1 ) { 
@@ -829,11 +1169,61 @@ public class AmpleTextArea extends JTextArea implements MenuActivist {
 	      } else if ( cmd.equals( ActionNames.PASTE ) ) {
 	     	    actionLookup.get( DefaultEditorKit.pasteAction ).actionPerformed(null);
 	     	    
+	      } else if ( isHtml && cmd.equals( ActionNames.BOLD ) ) {
+	     	    actionLookup.get( "font-bold" ).actionPerformed(null);
+	     	    
+	      } else if ( isHtml && cmd.equals( ActionNames.ITALIC ) ) {
+	     	    actionLookup.get( "font-italic" ).actionPerformed(null);
+	     	    
+	      } else if ( isHtml && cmd.equals( ActionNames.UNDERLINE ) ) {
+	     	    actionLookup.get( "font-underline" ).actionPerformed(null);
+	     	    
+	      } else if ( isHtml && cmd.equals( ActionNames.INCREASE_FONT ) ) {
+	     	   increaseFont();
+	     	    
+	      } else if ( isHtml && cmd.equals( ActionNames.DECREASE_FONT ) ) {
+	     	   decreaseFont();
+	     	    
+	      } else if ( isHtml && cmd.equals( ActionNames.MONOSPACED ) ) {
+	     	    actionLookup.get( "font-family-Monospaced" ).actionPerformed(null);
+	     	    
+	      } else if ( isHtml && cmd.equals( ActionNames.SERIF ) ) {
+	     	    actionLookup.get( "font-family-Serif" ).actionPerformed(null);
+	     	    
+	      } else if ( isHtml && cmd.equals( ActionNames.SANS_SERIF ) ) {
+	     	    actionLookup.get( "font-family-SansSerif" ).actionPerformed(null);
+	     	    
+	      } else if ( isHtml && cmd.equals( ActionNames.FONT_FAMILY ) ) {
+	    	  setFontFamilyFunction();
+	    	  
+	      } else if ( isHtml && cmd.equals( ActionNames.FONT_COLOR ) ) {
+	    	  setFontColorFunction();
+	    	  
+	      } else if ( cmd.equals( ActionNames.BACKGROUND ) ) {
+	    	  Color color = getBackground();
+	   	   	  color = ColorChooserDialog.showDialog(getOwner(), null, colorOptions, color);
+	   	   	  if (color != null) {
+	   	   		  setBackground(color);
+	   	   	  }
+	    	  
+	      } else if ( cmd.equals( ActionNames.FOREGROUND ) ) {
+	   	   	  Color color = ColorChooserDialog.showDialog(getOwner(), null, colorOptions, getForeground());
+	   	   	  if (color != null) {
+	   	   		  setForeground(color);
+	   	   	  }
+	    	  
 	      } else if ( cmd.equals( ActionNames.SELECT_ALL ) ) {
-	     	    actionLookup.get( DefaultEditorKit.selectAllAction).actionPerformed(null);
+	     	  actionLookup.get( DefaultEditorKit.selectAllAction).actionPerformed(null);
 	     	    
 	      } else if ( cmd.equals( ActionNames.PRINT ) ) {
-	         startPrinting();
+	    	  startPrinting();
+
+	      } else if ( cmd.equals( ActionNames.FONT ) ) {
+     		 Font font = FontChooser.showDialog(getOwner(), getIntl("title.fontchooser"), getFont());
+     		 if (font != null) {
+     			 setFont(font);
+     		 }
+
 
 //	      } else if ( cmd.equals( ActionNames.HELP ) ) {
 //		     for (Action a : menuActions) {
@@ -844,10 +1234,19 @@ public class AmpleTextArea extends JTextArea implements MenuActivist {
 //		    	 }
 //		     }
 
-	      } else if ( cmd.equals( "keystroke.CTRL-U" ) ) {
-	         String dtext = Util.standardTimeString( System.currentTimeMillis(),
-	               TimeZone.getTimeZone( "UTC" )).concat( " UT " );
-	         insert( dtext, getCaretPosition() );
+	      } else if ( isHtml && cmd.equals( "keystroke.CTRL-B" ) ) {
+	     	    actionLookup.get( "font-bold" ).actionPerformed(null);
+
+	      } else if ( isHtml && cmd.equals( "keystroke.CTRL-I" ) ) {
+	     	    actionLookup.get( "font-italic" ).actionPerformed(null);
+
+	      } else if ( isHtml && cmd.equals( "keystroke.CTRL-U" ) ) {
+	     	    actionLookup.get( "font-underline" ).actionPerformed(null);
+
+	      } else if ( cmd.equals( "keystroke.CTRL-G" ) ) {
+		         String dtext = Util.standardTimeString( System.currentTimeMillis(),
+		               TimeZone.getTimeZone( "UTC" )).concat( " UT " );
+		         insert( dtext, getCaretPosition() );
 
 	      } else if ( cmd.equals( "keystroke.CTRL-D" ) ) {
 	         String dtext = Util.standardTimeString( System.currentTimeMillis() );
@@ -879,11 +1278,20 @@ public class AmpleTextArea extends JTextArea implements MenuActivist {
 	   // uncaught exception during any command (protects the caller) 
 	   } catch ( Exception e1 ) {
 	      e1.printStackTrace();
-	      GUIService.failureMessage( owner, "Unable to excute command: ".concat(cmd), e1 );
+	      GUIService.failureMessage( AmpleEditorPane.this, "Unable to excute command: ".concat(cmd), e1 );
 	   }
 	   }
 
-	   @Override
+	   private void insert (String dtext, int caretPosition) {
+		   // TODO Auto-generated method stub
+		   try {
+			   getDocument().insertString(caretPosition, dtext, null);
+		   } catch (BadLocationException e) {
+			   e.printStackTrace();
+		   }
+	   }
+
+	@Override
 	   public int hashCode() {
 		   return command == null ? super.hashCode() : command.hashCode();
 	   }
@@ -912,10 +1320,7 @@ public class AmpleTextArea extends JTextArea implements MenuActivist {
 		@Override
 		public void actionPerformed ( ActionEvent e ) {
 	       if ( undoManager.canUndo() ) {
-	    	  try {
-	    		  undoManager.undo();
-	    	  } catch (CannotUndoException ex) {
-	    	  }
+	          undoManager.undo();
 	       }
 	    }
 	}
@@ -930,11 +1335,8 @@ public class AmpleTextArea extends JTextArea implements MenuActivist {
 	   @Override
 	   public void actionPerformed ( ActionEvent e ) {
 	      if ( undoManager.canRedo() )
-	    	 try {
-	    		 undoManager.redo();
-	    	 } catch (CannotRedoException ex) {
-	    	 }
-	   	  }
+	         undoManager.redo();
+	   }
 	}
 
 	private class DocListener implements DocumentListener {
@@ -980,11 +1382,48 @@ public class AmpleTextArea extends JTextArea implements MenuActivist {
 	
 	   @Override
 	   public void run () {
+     	  Document doc = getDocument();
+    	  String contentType = getContentType();
+    	  Font font = getFont();
+    	  JTextComponent textComp;
+    	  String content;
+    	  
 	      try {
-	         print();
-	      } catch ( PrinterException e1 ) {
+	    	  // we branch after content type into different auxiliary editors
+	    	  if (contentType.indexOf("text/plain") > -1) {
+	    		  // text-area for plain-text
+	    		  JTextArea area = new JTextArea();
+	              area.setLineWrap(true);
+	              area.setWrapStyleWord(true);
+	    		  textComp = area;
+	    		  content = doc.getText(0, doc.getLength());
+	    		  
+	    	  } else {
+		   	      // editor-pane for styled documents (we copy the raw text)
+				  JEditorPane pane = new JEditorPane();
+		     	  pane.setContentType(contentType);
+		    	  textComp = pane;
+		
+		     	  EditorKit kit = JEditorPane.createEditorKitForContentType(contentType);
+		     	  StringWriter writer = new StringWriter();
+		     	  try {
+					  kit.write(writer, doc, 0, doc.getLength());
+				  } catch (IOException | BadLocationException e) {
+					  e.printStackTrace();
+				  }
+		     	  content = writer.toString();
+	    	  }
+    	  
+	    	  // print the auxiliary text component
+	    	  textComp.setLocale(getLocale());
+	    	  textComp.setBackground(Color.WHITE);
+	    	  textComp.setFont(font.deriveFont(font.getSize2D()-3));
+	    	  textComp.setText(content);
+	    	  textComp.print();
+	    	  
+	      } catch ( Exception e1 ) {
 	         e1.printStackTrace();
-	         GUIService.failureMessage( owner, "Unable to print the text!", e1 );
+	         GUIService.failureMessage( AmpleEditorPane.this, "Unable to print the text!", e1 );
 	      }
 	   }
 	}
@@ -1071,68 +1510,23 @@ public class AmpleTextArea extends JTextArea implements MenuActivist {
 		public static final String COPY = "menu.edit.copy";
 		public static final String PASTE = "menu.edit.paste";
 		public static final String DELETE = "menu.edit.delete"; 
-		public static final String LINE_WRAP = "menu.edit.linewrap";
+		public static final String BOLD = "menu.edit.bold"; 
+		public static final String ITALIC = "menu.edit.italic"; 
+		public static final String UNDERLINE = "menu.edit.underline"; 
+		public static final String MONOSPACED = "menu.edit.monospaced"; 
+		public static final String SERIF = "menu.edit.serif";
+		public static final String SANS_SERIF = "menu.edit.sansserif";
+		public static final String INCREASE_FONT = "menu.edit.font.increase";
+		public static final String DECREASE_FONT = "menu.edit.font.decrease";
+		public static final String FOREGROUND = "menu.edit.foreground";
+		public static final String BACKGROUND = "menu.edit.background";
+//		public static final String LINE_WRAP = "menu.edit.linewrap";
+		public static final String FONT_FAMILY = "menu.edit.font.family";
+		public static final String FONT_COLOR = "menu.edit.font.color"; 
 		public static final String PRINT = "menu.edit.print"; 
+		public static final String FONT = "menu.edit.font"; 
 		public static final String SELECT_ALL = "menu.edit.selectall";
 		public static final String HELP = "menu.edit.help"; 
 	}
 
-//	/**
-//		 * Renders a popup menu for the context of this text area
-//		 * including actual options of the UNDO manager.
-//		 * 
-//		 * @return <code>JPopupMenu</code>
-//		 */
-//		public JPopupMenu getPopupMenu () {
-//		   JMenuItem item;
-//		   
-//		   JPopupMenu menu = new JPopupMenu();
-//	//	   // investigate current text selection or entire text line
-//	//	   if ( (((hstr = getSelectedText()) != null || (hstr = getText()) != null))
-//	//			 && hstr.length() < 100000 )
-//	//	   {
-//	//	      // investigate for browsing URLs (multiple occurrences enabled)
-//	//	      if ( (urlArr = Util.extractURLs( hstr )) != null ) {
-//	//	         if ( urlArr.length == 1 ) {
-//	//	            // add browsing command if single url was found 
-//	//	            item = menu.add( ActionHandler.getStartBrowserAction( urlArr[0] , false ));
-//	//	            item.setForeground( MenuHandler.MENUITEM_MARKED_COLOR );
-//	//	         } else {
-//	//	            // create and add a submenu containing the URLs as item names
-//	//	            subMenu = new JMenu( ResourceLoader.getCommand( "menu.edit.starturl" ) );
-//	//	            subMenu.setForeground( MenuHandler.MENUITEM_MARKED_COLOR );
-//	//	            menu.add( subMenu );
-//	//	            for ( URL u : urlArr ) {
-//	//	               item = subMenu.add( ActionHandler.getStartBrowserAction( u , true ));
-//	//	               item.setForeground( MenuHandler.MENUITEM_MARKED_COLOR );
-//	//	            }
-//	//	         }
-//	//	      }
-//	//	      
-//	//	      // investigate for EMAIL ADDRESSES (multiple occurrences enabled)
-//	//	      if ( (addArr = Util.extractMailAddresses( hstr )) != null ) {
-//	//	         if ( addArr.length == 1 ) {
-//	//	            // add browsing command if single url was found 
-//	//	            item = menu.add( ActionHandler.getStartEmailAction( addArr[0], false ) );
-//	//	            item.setForeground( MenuHandler.MENUITEM_MARKED_COLOR );
-//	//	         } else {
-//	//	            // create and add a submenu containing the URLs as item names
-//	//	            subMenu = new JMenu( ResourceLoader.getCommand( "menu.edit.startmail" ) );
-//	//	            subMenu.setForeground( MenuHandler.MENUITEM_MARKED_COLOR );
-//	//	            menu.add( subMenu );
-//	//	            for ( String h : addArr ) {
-//	//	               item = subMenu.add( ActionHandler.getStartEmailAction( h , true ));
-//	//	               item.setForeground( MenuHandler.MENUITEM_MARKED_COLOR );
-//	//	            }
-//	//	         }
-//	//	      }
-//	//	   }
-//		
-//		   // TODO menu entry "Help"
-//	//	   menu.addSeparator();
-//	//	   item = makeMenuItem( "menu.help" );
-//	//	   menu.add( item );
-//		   return menu;
-//		}
-	
 }

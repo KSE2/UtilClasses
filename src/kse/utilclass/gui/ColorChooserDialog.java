@@ -30,6 +30,7 @@ import java.awt.Dimension;
 import java.awt.Window;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.util.Locale;
 import java.util.Objects;
 
 import javax.swing.BorderFactory;
@@ -37,7 +38,9 @@ import javax.swing.BorderFactory;
 import kse.utilclass.dialog.ButtonBarModus;
 import kse.utilclass.dialog.DialogPerformBlock;
 import kse.utilclass.dialog.GSDialog;
+import kse.utilclass.dialog.GUIService;
 import kse.utilclass.misc.Log;
+import kse.utilclass.misc.Util;
 
 /** Color chooser dialog which incorporates {@code ColorChooserPanel}.
  * The dialog offers to choose from a set of predefined colours (type 
@@ -75,7 +78,7 @@ public class ColorChooserDialog extends GSDialog {
 	 * @param initialColor Color initial color option, may be null
 	 */
 	public ColorChooserDialog (Window owner, String title, Color[] colors, Color initialColor) {
-		super(owner, ButtonBarModus.NONE, true);
+		super(owner, ButtonBarModus.BREAK, true);
 		Objects.requireNonNull(colors, "colors is null");
 		setTitle(title);
 		this.colors = colors;
@@ -114,6 +117,9 @@ public class ColorChooserDialog extends GSDialog {
 	
 	public static String getIntlText (String token) {
 		String text = null;
+		String language = Locale.getDefault().getLanguage();
+		
+		// default language English
 		if ("button.colorchooser".equals(token)) {
 			text = "Color";
 		} else if ("title.jcolorchooser".equals(token)) {
@@ -121,6 +127,36 @@ public class ColorChooserDialog extends GSDialog {
 		} else if ("title.choose.color".equals(token)) {
 			text = "Color Selection";
 		}
+
+		// language German
+		if (Locale.GERMAN.getLanguage().equals(language)) {
+			if ("button.colorchooser".equals(token)) {
+				text = "Farbe";
+			} else if ("title.jcolorchooser".equals(token)) {
+				text = "Farb-Definition";
+			} else if ("title.choose.color".equals(token)) {
+				text = "Farb-Auswahl";
+			}
+			
+		} else if (Locale.FRENCH.getLanguage().equals(language)) {
+			if ("button.colorchooser".equals(token)) {
+				text = "Couleur";
+			} else if ("title.jcolorchooser".equals(token)) {
+				text = "Définition des Couleur";
+			} else if ("title.choose.color".equals(token)) {
+				text = "Sélection des Couleur";
+			}
+
+		} else if (Locale.ITALIAN.getLanguage().equals(language)) {
+			if ("button.colorchooser".equals(token)) {
+				text = "Colore";
+			} else if ("title.jcolorchooser".equals(token)) {
+				text = "Definizione del Colore";
+			} else if ("title.choose.color".equals(token)) {
+				text = "Selezione del Colore";
+			}
+		}
+
 		return text;
 	}
 	
@@ -154,9 +190,10 @@ public class ColorChooserDialog extends GSDialog {
 		if (title == null) {
 			title = getIntlText("title.choose.color");
 		}
-		ColorChooserDialog dlg = new ColorChooserDialog(null, title, colors, initialColor);
+	    Window owner = parent == null ? GUIService.getMainFrame() : GUIService.getAncestorWindow(parent);
+		ColorChooserDialog dlg = new ColorChooserDialog(owner, title, colors, initialColor);
 		dlg.setLocationRelativeTo(parent == null ? dlg.getOwner() : parent);
-		dlg.setVisible(true);
+		dlg.setVisible();
 		return dlg.getSelectedColor();
 	}
 }
