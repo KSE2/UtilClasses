@@ -1,47 +1,28 @@
-package kse.utilclass.misc;
-
 /*
-*  File: HashMac.java
-* 
-*  Project JUtilClasses
-*  @author Wolfgang Keller
-*  Created 
-* 
-*  Copyright (c) 2022 by Wolfgang Keller, Munich, Germany
-* 
-This program is not public domain software but copyright protected to the 
-author(s) stated above. However, you can use, redistribute and/or modify it 
-under the terms of the GNU Library or Lesser General Public License as 
-published by the Free Software Foundation, version 3.0 of the License.
+ *  File: HashMac.java
+ * 
+ *  Project UtilClasses
+ *  @author Wolfgang Keller
+ *  @author Jeroen C. van Gelderen, Cryptix Foundation
+ *  Created 2004
+ * 
+ *  Copyright (c) 2005-2024 by Wolfgang Keller, Germany
+ *  Copyright (C) 1995-2000 The Cryptix Foundation Limited (modified)
+ * 
+ This program is copyright protected to the author(s) stated above. However, 
+ you can use, redistribute and/or modify it for free under the terms of the 
+ 2-clause BSD-like license given in the document section of this project.  
 
-This program is distributed in the hope that it will be useful, but WITHOUT
-ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
-FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
-
-You should have received a copy of the License along with this program; if not,
-write to the Free Software Foundation, Inc., 59 Temple Place - Suite 330, 
-Boston, MA 02111-1307, USA, or go to http://www.gnu.org/copyleft/gpl.html.
-*/
-
-/* $Id: HashMac.java,v 1.5 2005/05/27 07:33:10 somebody Exp $
- *
- * Copyright (C) 1995-2000 The Cryptix Foundation Limited.
- * All rights reserved.
- *
- * Use, modification, copying and distribution of this software is subject to
- * the terms and conditions of the Cryptix General Licence. You should have
- * received a copy of the Cryptix General Licence along with this library;
- * if not, you can download a copy from http://www.cryptix.org/ .
- *
- * Modified: Wolfgang Keller, 2004 
+ This program is distributed in the hope that it will be useful, but WITHOUT
+ ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+ FOR A PARTICULAR PURPOSE. See the license for more details.
  */
 
-import java.security.DigestException;
-
+package kse.utilclass.misc;
 
 /**
- * This abstract class implements the MD4-like block/padding structure as it is
- * used by most hashes (MD4, MD5, SHA-0, SHA-1, RIPEMD-128, RIPEMD-160, Tiger).
+ * This abstract class implements the block/padding structure as it is
+ * used by sub-classing hashes.
  *
  * This class handles the message buffering, bit counting and padding.
  * Subclasses need implement only the three abstract functions to create a
@@ -50,7 +31,7 @@ import java.security.DigestException;
  * This class has three padding modes: MD5-like, SHA-like and Tiger-like.
  * This applies to the padding and encoding of the 64-bit length counter.
  *
- * @version $Revision: 1.5 $
+ * @version $Revision: 1.3 $
  * @author  Jeroen C. van Gelderen (gelderen@cryptix.org)
  *          <br>Modified by Wolfgang Keller, 2004
  */
@@ -91,6 +72,7 @@ public abstract class HashMac
 
     /** stored result value */
     private byte[] result;
+    private boolean invalid = true;
 
     protected static final int
         MODE_MD    = 0,
@@ -143,11 +125,12 @@ public abstract class HashMac
     {
        this.blockSize = src.blockSize;
        this.hashSize  = src.hashSize;
-       this.buf       = (byte[])src.buf.clone();
+       this.buf       = src.buf.clone();
        this.bufOff    = src.bufOff;
        this.byteCount = src.byteCount;
        this.mode      = src.mode;
-       this.result    = src.result;
+       this.result    = src.result == null ? null : src.result.clone();
+       this.invalid   = src.invalid;
    }
 
     /**
@@ -155,7 +138,8 @@ public abstract class HashMac
      * (Required because of finals in member data.)
      */
     @Override
-	protected Object clone() throws CloneNotSupportedException {
+	protected Object clone() throws CloneNotSupportedException 
+    {
        throw new CloneNotSupportedException();
    }
 
@@ -169,18 +153,21 @@ public abstract class HashMac
         return this.hashSize;
     }
 
-
+    public int getBlockSize ()
+    {
+       return blockSize;
+    }
+    
     public void update( byte input )
     {
-       if ( result != null )
+       if ( !invalid )
           throw new IllegalStateException("instance used up");
        
        //#ASSERT(this.bufOff < blockSize);
 
         byteCount += 1;
         buf[bufOff++] = input;
-        if( bufOff==blockSize )
-        {
+        if( bufOff==blockSize ) {
             coreUpdate(buf, 0);
             bufOff = 0;
         }
@@ -188,21 +175,26 @@ public abstract class HashMac
         //#ASSERT(this.bufOff < blockSize);
     }
 
-    /** Updates 4 bytes of an integer value to the sum. */ 
+    /** Updates a boolean value as a single byte (0x00 or 0xFF).
+     * 
+     * @param bool boolean
+     */
+    public void update( boolean bool) {
+    	update((byte) (bool ? 0xFF : 0));
+    }
+    
     public void update( int input )
     {
        for ( int i = 3; i > -1; i-- )
           update( (byte)(input >>> i*8) );
     }
     
-    /** Updates 8 bytes of a long integer value to the sum. */ 
     public void update( long input )
     {
        for ( int i = 1; i > -1; i-- )
           update( (int)(input >>> i*32) );
     }
-
-    /** Updates a byte array to the sum. */
+    
     public void update( byte[] input )
     {
        update( input, 0, input.length );
@@ -213,7 +205,7 @@ public abstract class HashMac
        if ( offset + length > input.length )
           throw new IllegalArgumentException( "length overflow" );
        
-       if ( result != null )
+       if ( !invalid )
           throw new IllegalStateException("instance used up");
        
         byteCount += length;
@@ -236,37 +228,27 @@ public abstract class HashMac
         bufOff += length;
     }
 
-    /**
-     * Updates an array of chars as a sequence of bytes. Chars are seen as  
-     * represented in Java Unicode-16, which means each char as 2 bytes in 
-     * Big-Endian order (most significant stored first).
-     * 
-     * @param input a char array
-     */
     public void update( char[] input )
     {
        update( input, 0, input.length );
     }
     
     /**
-     * Updates an array of chars as a sequence of bytes. Chars are seen as  
-     * represented in Java Unicode-16, which means each char as 2 bytes in 
-     * Big-Endian order (most significant stored first).
+     * Update sees an array of chars as a sequence of bytes as they are stored,
+     * which means each char as 2 bytes in Big-Endian order (most significant 
+     * stored first).
      * 
      * @param input a char array
-     * @param offset start offset in <code>input</code>
+     * @param offset start offset in <code>input</coe>
      * @param length number of chars to be used for this update
      */
     public void update( char[] input, int offset, int length )
     {
-       int i;
-       char c;
-       
        if ( offset + length > input.length )
           throw new IllegalArgumentException( "length overflow" );
        
-       for ( i = 0; i < length; i++ ) {
-          c = input[ offset + i ];
+       for ( int i = 0; i < length; i++ ) {
+          char c = input[ offset + i ];
           update( (byte)(c >>> 8) );
           update( (byte)c );
        }
@@ -294,14 +276,11 @@ public abstract class HashMac
      */
     public void update( String input, int offset, int length )
     {
-       int i;
-       char c;
-
        if ( offset + length > input.length() )
           throw new IllegalArgumentException( "length overflow" );
        
-       for ( i = 0; i < length; i++ ) {
-          c = input.charAt( offset + i );
+       for ( int i = 0; i < length; i++ ) {
+          char c = input.charAt( offset + i );
           update( (byte)(c >>> 8) );
           update( (byte)c );
        }
@@ -315,11 +294,10 @@ public abstract class HashMac
     }
 
 
-    public int readDigest( byte[] buf, int offset, int len )
-    throws DigestException
+    public int readDigest( byte[] buf, int offset, int len ) 
     {
         if ( len<0 || len>hashSize )
-           throw new DigestException();
+           throw new IllegalArgumentException("illegal digest length");
 
         return privateDigest(buf, offset, len);
     }
@@ -334,7 +312,8 @@ public abstract class HashMac
        //#ASSERT(this.bufOff < blockSize);
        
        // calculate value only if no result stored
-       if ( result == null )
+//       if ( result == null )
+       if ( invalid )
        {
           this.buf[this.bufOff++] = (mode==MODE_TIGER) ? (byte)0x01 : (byte)0x80;
           
@@ -368,8 +347,11 @@ public abstract class HashMac
           }
           
           coreUpdate(this.buf, 0);
-          result = new byte[ hashSize ];
+          if (result == null) {
+        	  result = new byte[ hashSize ];
+          }
           coreDigest(result, 0);
+          invalid = false;
        }        
     
        // return hash value
@@ -379,7 +361,8 @@ public abstract class HashMac
 
     /** Finalize of this class destroys a resulting digest value. */
     @Override
-	public void finalize () {
+	public void finalize ()
+    {
        if ( result != null ) {
           for ( int i = 0; i < result.length; i++ )
              result[ i ] = 0;
@@ -390,7 +373,7 @@ public abstract class HashMac
     {
         bufOff    = 0;
         byteCount = 0;
-        result = null; 
+        invalid = true;
         coreReset();
     }
 

@@ -1,7 +1,7 @@
 /*
  *  File: SHA512.java
  * 
- *  Project PWSLIB3
+ *  Project UtilClasses
  *  @author Wolfgang Keller
  *  @author Jeroen C. van Gelderen, Cryptix Foundation
  *  Created 2004
@@ -18,12 +18,11 @@
  FOR A PARTICULAR PURPOSE. See the license for more details.
 */
 
-package kse.utilclass2.misc;
-
-import kse.utilclass.misc.HashMac;
-import kse.utilclass.misc.Util;
+package kse.utilclass.misc;
 
 /**
+ * SHA-512 algorithm.
+ * 
  * @version $Revision: 1.2 $
  * @author  Jeroen C. van Gelderen (gelderen@cryptix.org)
  *          <br>Modified by Wolfgang Keller, 2006
@@ -206,19 +205,30 @@ private static final long K[] = {
     private final long R(int off, long x) { return (x >>> off); }
     private final long S(int off, long x) { return (x>>>off) | (x<<(64-off)); }
 
-    
+   /** Creates a SHA-512 digest from the given long value.
+    * 
+    * @param seed long
+    * @return byte[] digest (64 byte)
+    */
+   public static byte[] seedDigest ( long seed )
+   {
+      SHA512 sha = new SHA512();
+      int i;
+      
+      for ( i = 0; i < 8; i++ )
+         sha.update( (byte)(seed >>> i) );
+      return sha.digest();
+   }
+
    public static boolean self_test ()
    {
-      SHA512 s1, s2, s3, s4, s5;
+      SHA512 s1, s2;
       byte[] ba;
       int i;
       String hstr, ctv;
       
       s1 = new SHA512(); 
       s2 = new SHA512(); 
-      s3 = new SHA512(); 
-      s4 = new SHA512(); 
-      s5 = new SHA512(); 
    
       // length
       if ( s1.getDigestLength() != 64 )
@@ -237,8 +247,9 @@ private static final long K[] = {
       }
       
       // Test value "empty"
-      s2.update( "".getBytes() );
-      hstr = Util.bytesToHex( s2.digest() );
+      s1.reset();
+      s1.update( "".getBytes() );
+      hstr = Util.bytesToHex( s1.digest() );
       if ( !hstr.equals( ctv ) )
       {
          System.out.println( "SHA-512 failure: conforming \"empty\" result" );
@@ -246,8 +257,9 @@ private static final long K[] = {
       }
      
       // Test value NIST C.1 ("abc")
-      s3.update( "abc".getBytes() );
-      hstr = Util.bytesToHex( s3.digest() );
+      s1.reset();
+      s1.update( "abc".getBytes() );
+      hstr = Util.bytesToHex( s1.digest() );
       ctv = "ddaf35a193617abacc417349ae20413112e6fa4e89a97ea20a9eeee64b55d39a2192992a274fc1a836ba3c23a3feebbd454d4423643ce80e2a9ac94fa54ca49f";
       if ( !hstr.equals( ctv ) )
       {
@@ -257,8 +269,8 @@ private static final long K[] = {
       
       // Test value NIST C.2
       hstr = "abcdefghbcdefghicdefghijdefghijkefghijklfghijklmghijklmnhijklmnoijklmnopjklmnopqklmnopqrlmnopqrsmnopqrstnopqrstu";
-      s4.update( hstr.getBytes() );
-      hstr = Util.bytesToHex( s4.digest() );
+      s2.update( hstr.getBytes() );
+      hstr = Util.bytesToHex( s2.digest() );
       ctv = "8e959b75dae313da8cf4f72814fc143f8f7779c6eb9f7fa17299aeadb6889018501d289e4900f7e4331b99dec4b5433ac7d329eeb6dd26545e96e55b874be909";
       if ( !hstr.equals( ctv ) )
       {
@@ -267,12 +279,13 @@ private static final long K[] = {
       }
    
       // Test value NIST C.3 ("a" * 1000000) 
+      s1.reset();
       ba = new byte[1000];
       for ( i = 0; i < 1000; i++ )
          ba[i] = 'a';
       for ( i = 0; i < 1000; i++ )
-         s5.update( ba );
-      hstr = Util.bytesToHex( s5.digest() );
+         s1.update( ba );
+      hstr = Util.bytesToHex( s1.digest() );
       ctv = "e718483d0ce769644e2e42c7bc15b4638e1f98b13b2044285632a803afa973ebde0ff244877ea60a4cb0432ce577c31beb009c5c2c49aa2e4eadb217ad8cc09b";
       if ( !hstr.equals( ctv ) )
       {
@@ -283,12 +296,4 @@ private static final long K[] = {
       return true;
    }  // self_test
    
-   public static byte[] seedDigest ( long seed ) {
-      SHA512 sha = new SHA512();
-      
-      for ( int i = 0; i < 8; i++ )
-         sha.update( (byte)(seed >>> i) );
-      return sha.digest();
-   }
-
 }

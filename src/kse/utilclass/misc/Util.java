@@ -47,6 +47,8 @@ import java.io.Reader;
 import java.io.StreamCorruptedException;
 import java.io.UnsupportedEncodingException;
 import java.io.Writer;
+import java.net.MalformedURLException;
+import java.net.URL;
 import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
 import java.nio.CharBuffer;
@@ -79,10 +81,14 @@ import javax.swing.tree.TreePath;
 import kse.utilclass.dialog.GUIService;
 
 public class Util {
-
+	
+	/** Milliseconds of a day */
 	public static final long TM_DAY = 24 * 60 * 60 * 1000;
+	/** Milliseconds of one hour */
 	public static final long TM_HOUR = 60 * 60 * 1000;
+	/** Milliseconds of one minute */
 	public static final long TM_MINUTE = 60 * 1000;
+	/** Milliseconds of one second */
 	public static final long TM_SECOND= 1000;
 	/** A String array of size zero. */
 	public static final String[] EMPTY_STRING_ARRAY = new String[0];
@@ -161,7 +167,7 @@ public class Util {
 	}
 	
 	/** Returns a String consisting of random character values (lower case)
-	 * and of random length ranging 0 <= len <= maxLength.
+	 * and of random length ranging {@code 0 <= len <= maxLength}.
 	 * 
 	 * @param maxLength int maximum string length
 	 * @return String
@@ -353,7 +359,29 @@ public class Util {
 	      return result;
 	   }
 
-	/** Returns a two char hexadecimal String representation of a single byte.
+	   /** Returns a 4 char hexadecimal String representation of a single short integer.
+	    * 
+	    * @param v integer with a short value; other values get truncated
+	    * @return an absolute hex value representation (unsigned) of the input
+	    */
+	   public static String shortToHex ( int v ) {
+	      String hstr;
+	      hstr = Integer.toString( v & 0xffff, 16 );
+	      return "0000".substring( hstr.length() ) + hstr;
+	   }
+
+	   /** Returns a 8 char hexadecimal String representation of a single integer (int).
+	    * 
+	    * @param v integer with a short value; other values get truncated
+	    * @return an absolute hex value representation (unsigned) of the input
+	    */
+	   public static String intToHex ( long v ) {
+	      String hstr;
+	      hstr = Long.toString( v & 0xffffffffL, 16 );
+	      return "00000000".substring( hstr.length() ) + hstr;
+	   }
+
+	   /** Returns a two char hexadecimal String representation of a single byte.
 	    * 
 	    * @param v integer with a byte value (-128 .. 255); other values get truncated
 	    * @return an absolute hex value representation (unsigned) of the input
@@ -459,7 +487,9 @@ public class Util {
 	    *  <code>defaultDir</code> is <b>null</b> the System property "user.dir" is
 	    *  assumed as default directory.
 	    *  
-	    *  @return <b>true</b> iff the parent directory of the specified file
+	    * @param file File 
+	    * @param defaultDir File 
+	    * @return <b>true</b> iff the parent directory of the specified file
 	    *          exists after this function terminates
 	    */
 	   public static boolean ensureFilePath ( File file, File defaultDir ) {
@@ -481,6 +511,42 @@ public class Util {
 	      if (a.length != b.length) return false;
 	      for (int i = 0; i < a.length; i++) {
 	         if (a[i] != b[i]) return false;
+	      }
+	      return true;
+	   }
+
+	   /** Whether two character arrays have equal contents.
+	    * 
+	    * @param a first char array to compare
+	    * @param b second char array to compare
+	    * @return <b>true</b> if and only if a) a and b have the same length, and 
+	    *          b) for all indices i for 0 to length holds a[i] == b[i]
+	    */
+	   public static boolean equalArrays ( char[] a, char[] b ) {
+	      if ( a.length != b.length ) return false;
+	      for ( int i = 0; i < a.length; i++ ) {
+	         if ( a[i] != b[i] ) return false;
+	      }
+	      return true;
+	   }
+
+	   /** Whether byte array a is contained in byte array b
+	    * at a specified location. Returns true if both arguments are null.
+	    * 
+	    * @param a byte[] first byte array to compare; may be null
+	    * @param b byte[] second byte array to compare; may be null
+	    * @param offset int offset in b where to start comparison
+	    * @return <b>true</b> if and only if 1) b has a minimum length of a.length + offset,
+	    *          and 2) content of a equals b[ offset..offset+a.length ]
+	    */
+	   public static boolean equalArrays ( byte[] a, byte[] b, int offset ) {
+	      if ( a == b ) return true;
+	      if ( a == null || b == null || b.length < a.length + offset )
+	         return false;
+	      
+	      for ( int i = 0; i < a.length; i++ ) {
+	         if ( a[i] != b[i+offset] )
+	            return false;
 	      }
 	      return true;
 	   }
@@ -511,8 +577,11 @@ public class Util {
 	   }
 
 	   /**
-	    * Returns a random String of the specified length. The characters will be
-	    * in the range (char)30 .. (char)137.
+	    * Returns a random String of the specified length. The characters 
+	    * will be in the range (char)30 .. (char)137.
+	    * 
+	    * @param length int target string length
+	    * @return String 
 	    */
 	   public static String randString ( int length ) {
 	      StringBuffer sb = new StringBuffer( length );
@@ -528,10 +597,8 @@ public class Util {
 	 * @return byte[] SHA256 digest (32 bytes)
 	 */
 	public static byte[] fingerPrint ( byte[] buffer ) {
-	   Objects.requireNonNull(buffer, "buffer is null");
-	   SHA256 sha = new SHA256();
-	   sha.update( buffer );
-	   return sha.digest();
+	   Objects.requireNonNull(buffer, "input is null");
+	   return sha256(buffer);
 	}
 
 	/** Returns a SHA-256 fingerprint value of the parameter byte buffer.
@@ -540,7 +607,6 @@ public class Util {
 	 * @return byte[] SHA256 digest (32 bytes)
 	 */
 	public static byte[] fingerPrint ( char[] buffer ) {
-		Objects.requireNonNull(buffer);
 		return fingerPrint(charToBytes(buffer));
 	}
 
@@ -550,9 +616,31 @@ public class Util {
 	 * @return byte[] SHA256 digest (32 bytes)
 	 */
 	public static byte[] fingerPrint ( String buffer ) {
-	   SHA256 sha = new SHA256();
-	   sha.update( buffer );
-	   return sha.digest();
+		return fingerPrint(buffer == null ? null : buffer.toCharArray());
+	}
+
+	/** A 32 bytes fingerprint value calculated from a SHA-256 update of the
+	 * given data block.
+	 *  
+	 * @param data byte[] input
+	 * @return byte[] SHA-256 digest
+	 */
+	public static byte[] sha256 ( byte[] data ) {
+	    SHA256 sha = new SHA256();
+	    sha.update(data);
+	    return sha.digest(); 
+	}
+
+	/** A 64 bytes fingerprint value calculated from a SHA-512 update of the
+	 * given data block.
+	 *  
+	 * @param data byte[] input
+	 * @return byte[] SHA-512 digest
+	 */
+	public static byte[] sha512 ( byte[] data ) {
+	    SHA512 sha = new SHA512();
+	    sha.update(data);
+	    return sha.digest(); 
 	}
 
 	/**
@@ -648,7 +736,7 @@ public class Util {
 	}
 
 	/**
-	 * Modifies parameter a with (a XOR b).
+	 * Modifies parameter byte array a in-situ with (a XOR b).
 	 *  
 	 * @param a input byte array (same length as b)
 	 * @param b input byte array (same length as a)
@@ -659,8 +747,30 @@ public class Util {
 	      throw new IllegalArgumentException( "buffer a,b length must be equal" );
 	   
 	   int len = a.length;
-	   for ( int i = 0; i < len; i++ ) 
+	   for ( int i = 0; i < len; i++ ) {
 	      a[i] = (byte) (a[i] ^ b[i]);
+	   }
+	}
+
+	/**
+	 * Modifies a section of byte array a in-situ with a section of b,
+	 * XOR-ing length bytes.
+	 *  
+	 * @param a input/output byte array
+	 * @param startA int offset in a
+	 * @param b input byte array
+	 * @param startB int offset in b
+	 * @param length long 
+	 * @throws IllegalArgumentException if any buffer's length is exceeded
+	 */
+	public static final void XOR_buffers2 ( byte[] a, int startA, byte[] b, int startB, int length ) {
+	   requirePositive(length);
+	   if ( startA + length > a.length | startB + length > b.length )
+	      throw new IllegalArgumentException( "buffer length overflow" );
+	   
+	   for ( int i = 0; i < length; i++ ) {
+	      a[i + startA] = (byte) (a[i + startA] ^ b[i + startB]);
+	   }
 	}
 
 	/**
@@ -857,6 +967,7 @@ public class Util {
 	 * user has access rights.
 	 * 
 	 * @param dir File directory to be purged
+	 * @param includeSubs boolean
 	 * @return boolean true == directory is empty, false == unremoved elements
 	 * @throws IOException 
 	 */
@@ -1356,6 +1467,7 @@ public class Util {
 	 * 
 	 * @param buf {@code CharBuffer}
 	 * @return long read signed integer
+	 * @throws NumberFormatException 
 	 */
 	public static long readInteger (CharBuffer buf) throws NumberFormatException {
 		// detect length and location of the digit sequence
@@ -1710,8 +1822,9 @@ public class Util {
       sbuf = new StringBuffer( length );
       hstr = String.valueOf( v );
       n = length - hstr.length();
-      for ( i = 0; i < n; i++ )
+      for ( i = 0; i < n; i++ ) {
          sbuf.append( '0' );
+      }
       sbuf.append(  hstr );
       return sbuf.toString();
    }
@@ -1956,6 +2069,11 @@ public class Util {
 		GUIService.performOnEDT(run);
 	}
 
+	/** The number of elements in the set of values of the given characters.
+	 *  
+	 * @param ca char[]
+	 * @return int
+	 */
 	public static int textVariance (char[] ca) {
 	    BitSet set = new BitSet();
 	    for (int i = 0; i < ca.length; i++) {
@@ -1964,6 +2082,53 @@ public class Util {
 	    return set.cardinality();         
     }
 
+	/** The number of elements in the set of values of the given bytes.
+	 *  
+	 * @param ba byte[]
+	 * @return int
+	 */
+	public static int textVariance (byte[] ba) {
+	    BitSet set = new BitSet();
+	    for (int i = 0; i < ba.length; i++) {
+	        set.set( ba[i] & 0xFF );
+	    }
+	    return set.cardinality();         
+    }
+
+	/** Returns the String defined by a section of the given data buffer
+	 * terminated with a zero value. Returns null if no zero was found
+	 *
+	 * @param buf byte[] data buffer
+	 * @param start int starting position in buffer
+	 * @param charset String character encoding applied; may be null
+	 * @return String or null
+	 * @throws UnsupportedEncodingException 
+	 */
+	public static String getZTermString (byte[] buf, int start, String charset) 
+				throws UnsupportedEncodingException {
+		Objects.requireNonNull(buf, "buffer is null");
+		Util.requirePositive(start);
+		if (charset == null) {
+			charset = Charset.defaultCharset().name();
+		}
+		
+		// search for the next zero value (delimiter)
+		int index = -1;
+		for (int i = start; i < buf.length; i++) {
+			if (buf[i] == 0) {
+				index = i;
+				break;
+			}
+		}
+
+		// create the result iff zero was found
+		if (index > -1) {
+			String hs = new String(buf, start, index, charset);
+			return hs;
+		}
+		return null;
+	}
+	
 	/** Transforms the given text into a HTML encoded version which is 
 	 * broken down into multiple lines on the given column limit.
 	 * 
@@ -2093,6 +2258,59 @@ public class Util {
 		return sbuf.toString();
 	}
 
+	/**
+	 * Returns a URL object construed from the given file path. This method 
+	 * first attempts to interpret <code>filepath</code> as a regular URL 
+	 * nominator. If this fails it attempts to see <code>filepath</code> as
+	 * a local file path nominator and returns a "file:" protocol URL. Local
+	 * filepaths get canonised.
+	 *    
+	 * @param filepath
+	 * @return URL for parameter file path
+	 * @throws MalformedURLException if <code>filepath</code> is malformed
+	 * @throws IOException if some IO error occurs 
+	 */
+	public static URL makeFileURL (String filepath) throws IOException {
+	   URL url;
+	   
+	   // first attempt: if filepath is a qualified url nominator
+	   try { 
+		   url = new URL( filepath ); 
+	   } catch ( MalformedURLException e ) {
+	      // second attempt: generate URL from assumed local filepath
+	      File file = new File( filepath ).getCanonicalFile();
+	      String path = file.getAbsolutePath();
+	      if ( !path.startsWith("/") ) {
+	         path = "/" + path;
+	      }
+	      url = new URL( "file:" + path );
+	   }
+	   return url; 
+	}
+
+	/**
+	 * Transforms a char array into a byte array by sequentially writing characters.
+	 * Each char is stored in Little-Endian manner as unsigned short integer value 
+	 * in the range 0..65535.
+	 * 
+	 * @param carr char[] the source char array
+	 * @return byte array, the transformed state of the parameter with double length
+	 *         of the parameter  
+	 */
+	public static byte[] getByteArray ( char[] carr ) {
+	   byte[] buff;
+	   char ch;
+	   int i;
+	   
+	   // transfer content to internal cipher block
+	   buff = new byte[ carr.length * 2 ];
+	   for ( i = 0; i < carr.length; i++ ) {
+	      ch = carr[ i ];
+	      buff[ i*2 ] = (byte)ch;
+	      buff[ i*2+1 ] = (byte)(ch >>> 8);
+	   }
+	   return buff;
+	}
 
 	/** Returns the MD5-value of the given file. The value is a newly
 	 * created by reading the given file.
@@ -2300,6 +2518,20 @@ public class Util {
 		return true;
 	}
 	
+	/** Whether the given object is an element of a given array.
+	 * 
+	 * @param o Object
+	 * @param arr array of Object
+	 * @return boolean <b>true</b> if and only if one of the elements of <code>arr</code>
+	 *         <code>equals()</code> parameter <code>o</code>
+	 */
+	public static boolean isArrayElement ( Object o, Object[] arr )	{
+	   for ( int i = 0; i < arr.length; i++ ) {
+	      if ( o.equals( arr[i] ) ) return true;
+	   }
+	   return false;
+	}
+
 	/** Returns a CRC_32 value over the given byte array.
 	 * Returns zero if the argument is null.
 	 * 
@@ -2526,6 +2758,19 @@ public class Util {
 		}
 	}
 
+   /**
+    * Destroys the contents of the parameter byte array by assigning zero to
+    * all elements.
+    * 
+    * @param ba byte[]
+    */
+   public static void destroy ( byte[] ba ) {
+	  if (ba != null)
+      for ( int i = 0; i < ba.length; i++ ) {
+         ba[i] = 0;
+      }
+   }
+
   /**
    * Returns a string representation of the parameter long integer value
    * including decimal separation signs (after VM default locale).
@@ -2603,6 +2848,16 @@ public class Util {
 	 */
 	public static int nextRand() {
 		return random.nextInt();
+	}
+
+	/**
+	 * Returns a random value within the range 0 .. 255.
+	 * (non-cryptographical random)
+	 * 
+	 * @return a value <code>0 .. 255</code>
+	 */
+	public static int nextRandByte () {
+	   return random.nextInt(256);
 	}
 
 	/** Returns the next pseudo-random boolean.

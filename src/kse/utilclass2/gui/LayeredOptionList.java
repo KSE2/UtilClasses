@@ -39,7 +39,7 @@ import javax.swing.ListSelectionModel;
  * A subclass of <code>LayeredList</code> to organise a list of check-box
  * selectable list items in a tree-enabled, layered list.
  *
- * <p><b>Elements and Selection</b></code>
+ * <p><b>Elements and Selection</b>
  * <p>List elements have to be instances of <code>LayeredOptionList.ListElement
  * </code> or a custom subclass thereof. This class allows reading and setting
  * of an item selection state via <code>isCheckSelected()</code> and
@@ -48,7 +48,7 @@ import javax.swing.ListSelectionModel;
  * Any custom overriding of the <code>mouseClicked()</code> method must 
  * necessarily call the super method!
  *  
- * <p><b>Fine Grain</b></code>
+ * <p><b>Fine Grain</b>
  * <p>On list level, custom settings are feasible to determine whether 
  * check-boxes have to be precisely hit by mouse clicks in order to trigger 
  * selection action, and whether check-boxes are to be shown on FOLDER elements.

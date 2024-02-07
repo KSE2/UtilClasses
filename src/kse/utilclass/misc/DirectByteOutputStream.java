@@ -37,7 +37,15 @@ public class DirectByteOutputStream extends ByteArrayOutputStream {
 	 *  
 	 * @return {@code ByteBuffer}
 	 */
-	ByteBuffer getByteBuffer () {
+	public ByteBuffer getByteBuffer () {
 		return ByteBuffer.wrap(buf, 0, count);
 	}
+	
+	/** Erases the internal byte buffer and resets the object. 
+	 */
+	public void clear () {
+	   Util.destroy(this.buf);
+	   this.reset();
+	}
+
 }

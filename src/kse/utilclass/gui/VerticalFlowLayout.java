@@ -61,6 +61,8 @@ public class VerticalFlowLayout implements LayoutManager {
   /**
    * Creates a VerticalFlowLayout with ALIGN=LEFT, the specified VGAP and
    * no "Fill" functions.
+   * 
+   * @param vgap int vertical gap in pixel 
    */
   public VerticalFlowLayout(int vgap) {
      this.vgap = Math.max( 0, vgap );
@@ -69,10 +71,13 @@ public class VerticalFlowLayout implements LayoutManager {
   /**
    * Creates a VerticalFlowLayout with ALIGN=LEFT, VFILL=false and
    * the specified VGAP and HFILL.
+   * 
+   * @param vgap int vertical gap in pixel 
+   * @param horizontalFill boolean 
    */
   public VerticalFlowLayout( int vgap, boolean horizontalFill ) {
-    this( vgap );
-    hfill = horizontalFill;
+     this( vgap );
+     hfill = horizontalFill;
   }
 
   /**

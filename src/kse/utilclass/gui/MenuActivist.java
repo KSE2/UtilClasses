@@ -51,9 +51,10 @@ public interface MenuActivist extends MenuActionSource {
 
 	/**
 	 * Renders a named {@code JPopupMenu} for the context of this interface or 
-	 * null if such a popup menu is not defined. The default renders the results
+	 * null if such a menu is not defined. The default renders the results
 	 * of {@code getJMenu(name)} as a popup menu. 
 	 * 
+	 * @param name String 
 	 * @return <code>JPopupMenu</code> or null
 	 */
 	default JPopupMenu getPopupMenu (String name) {
@@ -80,7 +81,8 @@ public interface MenuActivist extends MenuActionSource {
 	/** Renders a named {@code JMenu} for the context of this interface or null
 	 * if such a menu is not defined. The default renders the results of 
 	 * {@code getMenuActions(name)} contained in a {@code JMenu}.
-	 *  
+	 * 
+	 * @param name String name of the menu, may be null
 	 * @return {@code JMenu} or null
 	 */
 	default JMenu getJMenu (String name) {

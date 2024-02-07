@@ -56,7 +56,7 @@ import kse.utilclass.gui.ColorSwatch;
  * of its elements and a folding feature of each tree node. The list behaves 
  * in a way typical to tree displays in that it knows branches that can be 
  * folded and unfolded. The component can be used like a JList except that it 
- * implements a fix data model, hence methods <code>setModel()<code> and 
+ * implements a fix data model, hence methods <code>setModel()</code> and 
  * <code>setListData()</code> are not supported. Index references into the
  * data model are unreliable in that index values of an element also refer to 
  * a set of folding states of tree nodes. Use of index values into the data 
@@ -759,7 +759,7 @@ public static class ListElement implements Comparable<ListElement> {
     * and only if there exist sub-elements to its hierarchy notation in the 
     * set of list elements. An element which is not a member of a list
     * therefore cannot be a FOLDER.
-    * <p><small>Example: A hierarchy notation "000111002" defines a sub-element
+    * <p>Example: A hierarchy notation "000111002" defines a sub-element
     * to the FOLDER element with notation "000111".
     * 
     * @return boolean true == element is a FOLDER

@@ -155,10 +155,11 @@ public class AmpleEditorPane extends JEditorPane implements MenuActivist {
     /**
      * Creates a <code>AmpleEditorPane</code> based on a string containing
      * a URL specification.
-     *
-     * @param url URL of document
-     * @exception IOException if the URL is <code>null</code> or cannot be 
-     *            accessed
+     * 
+     * @param name String 
+     * @param url String URL address of document
+     * @exception IOException if 'url' is <code>null</code> or the address
+     *            cannot be accessed
      */
     public AmpleEditorPane (String name, String url) throws IOException {
     	super(url);

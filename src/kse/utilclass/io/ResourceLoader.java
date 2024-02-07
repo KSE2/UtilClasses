@@ -86,8 +86,8 @@ public static final String FAIL_IMAGE = "default_fail";
 
 private static Locale loaderLocale;
    
-private Set<String> resPaths = new ArraySet<String>(); 
-private Hashtable<String, ResourceBundle> bundleTable = new Hashtable<String, ResourceBundle>();
+private Set<String> resPaths = new ArraySet<>(); 
+private Hashtable<String, ResourceBundle> bundleTable = new Hashtable<>();
 private Properties imageTable;
 
 /** Creates a resource loader for the given locale and resource paths.
@@ -204,11 +204,12 @@ public String getMessage ( String key ) {
 
 /** Tries to interpret <code>key</code> as string token of resource bundle 
  * "message" but renders the input if no such code is defined.
-*  Returns null if the argument is null.
-*  
-* @return the bundle contained text, if <code>key</code> was a token,
-*         <code>key</code> as is, otherwise. Possibly null.
-*/
+ * Returns null if the argument is null.
+ *  
+ * @param key String message token, may be null
+ * @return the bundle contained text if <code>key</code> was a token,
+ *         <code>key</code> as is otherwise. Possibly null.
+ */
 public String codeOrRealMsg ( String key ) {
 	if (key == null) return null;
 	String text = getString( "message", key );
@@ -223,8 +224,9 @@ public String codeOrRealMsg ( String key ) {
  * "display" but renders the input if no such code is defined.
 *  Returns null if the argument is null.
 *  
-*  @return String bundle contained text, if <code>key</code> was a token,
-*         <code>key</code> as is, otherwise. Possibly null.
+ * @param key String message token, may be null
+ * @return the bundle contained text if <code>key</code> was a token,
+ *         <code>key</code> as is otherwise. Possibly null.
 */
 public String codeOrRealDisplay ( String key ) {
 	if (key == null) return null;
@@ -239,8 +241,9 @@ public String codeOrRealDisplay ( String key ) {
  * "action" but renders the input if no such code is defined.
 *  Returns null if the argument is null.
 *  
-*  @return String bundle contained text, if <code>key</code> was a token,
-*         <code>key</code> as is, otherwise. Possibly null.
+ * @param key String message token, may be null
+ * @return the bundle contained text if <code>key</code> was a token,
+ *         <code>key</code> as is otherwise. Possibly null.
 */
 public String codeOrRealCommand ( String key ) {
 	if (key == null) return null;

@@ -279,7 +279,6 @@ public class LayeredFileSafe {
 	/** Promotes the framework of all files contained in this store.
 	 *  
 	 * @throws IOException
-	 * @throws InterruptedException
 	 */
 	public synchronized void promote () throws IOException {
 		File[] files = getFiles();
@@ -323,7 +322,6 @@ public class LayeredFileSafe {
 	 * has been stored.
 	 * 
 	 * @param file File object file to save
-	 * @throws InterruptedException 
 	 * @throws IOException 
 	 */
 	public synchronized void storeFile (File file) throws IOException {

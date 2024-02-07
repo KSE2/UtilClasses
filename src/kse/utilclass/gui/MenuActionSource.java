@@ -49,6 +49,7 @@ public interface MenuActionSource {
 	 * during a program session, i.e. they can be persistently modified. Also 
 	 * the list itself can be persistently modified. The default returns null.
 	 * 
+	 * @param name String name of the list, may be null
 	 * @return {@code List<Action>} or null
 	 */
 	default List<Action> getMenuActions (String name) {return null;}

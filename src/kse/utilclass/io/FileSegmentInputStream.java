@@ -70,6 +70,7 @@ public class FileSegmentInputStream extends InputStream {
  * @param length long length of rendered input stream
  * @throws IllegalArgumentException if the requested space is beyond file 
  *         length
+ * @throws IOException 
  */
 public FileSegmentInputStream (FileChannel	channel, long start, long length) throws IOException {
    Objects.requireNonNull(channel, "channel is null");
@@ -90,6 +91,7 @@ public FileSegmentInputStream (FileChannel	channel, long start, long length) thr
  * @param length long length of rendered input stream
  * @throws IllegalArgumentException if the requested space is beyond file 
  *         length
+ * @throws IOException 
  */
 public FileSegmentInputStream (File file, long start, long length) throws IOException {
    Objects.requireNonNull(file, "file is null");

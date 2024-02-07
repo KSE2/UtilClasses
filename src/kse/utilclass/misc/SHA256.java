@@ -1,20 +1,28 @@
-/* $Id: SHA256.java,v 1.5 2005/05/27 07:33:11 somebody Exp $
- *
- * Copyright (C) 2000 The Cryptix Foundation Limited. All rights reserved.
- *
- * Use, modification, copying and distribution of this software is subject to
- * the terms and conditions of the Cryptix General Licence. You should have
- * received a copy of the Cryptix General Licence along with this library;
- * if not, you can download a copy from http://www.cryptix.org/ .
- *
- * Modified: Wolfgang Keller, 2004 for the JQB project
- * Version 0.0.4
- */
+/*
+ *  File: SHA256.java
+ * 
+ *  Project UtilClasses
+ *  @author Wolfgang Keller
+ *  Created 2004
+ * 
+ *  Copyright (c) 2005-2015 by Wolfgang Keller, Munich, Germany
+ *  Copyright (C) 2000 The Cryptix Foundation Limited (modified)
+ * 
+ This program is copyright protected to the author(s) stated above. However, 
+ you can use, redistribute and/or modify it for free under the terms of the 
+ 2-clause BSD-like license given in the document section of this project.  
+
+ This program is distributed in the hope that it will be useful, but WITHOUT
+ ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+ FOR A PARTICULAR PURPOSE. See the license for more details.
+*/
 
 package kse.utilclass.misc;
 
 /**
- * @version $Revision: 1.5 $
+ * SHA-256 algorithm.
+ * 
+ * @version $Revision: 1.2 $
  * @author  Jeroen C. van Gelderen (gelderen@cryptix.org)
  *          <br>Modified by Wolfgang Keller, 2004
  */
@@ -25,7 +33,7 @@ public class SHA256 extends HashMac implements Cloneable
 //...........................................................................
 
     /** Size (in bytes) of this hash */
-    private static final int HASH_SIZE = 32;
+    public static final int HASH_SIZE = 32;
 
     /** Round constants */
     private static final int K[] = {
@@ -78,7 +86,8 @@ public class SHA256 extends HashMac implements Cloneable
     }
 
 
-    public Object clone() 
+    @Override
+	public Object clone() 
     {
        return new SHA256(this);
     }
@@ -87,9 +96,13 @@ public class SHA256 extends HashMac implements Cloneable
 // Concreteness
 //...........................................................................
 
-    /** Returns the resulting hash value in 32 bytes from offset.
+    /** Calculates the resulting hash value into 32 bytes of buffer from offset.
+     * 
+     * @param buf byte[] buffer
+     * @param off int offset in buffer
      */
-    protected void coreDigest (byte[] buf, int off)
+    @Override
+	protected void coreDigest (byte[] buf, int off)
     {
         for( int i=0; i<context.length; i++ )
             for( int j=0; j<4 ; j++ )
@@ -97,7 +110,8 @@ public class SHA256 extends HashMac implements Cloneable
     }
 
 
-    protected void coreReset()
+    @Override
+	protected void coreReset()
     {
         // initial values
         context[0] = 0x6a09e667;
@@ -111,7 +125,8 @@ public class SHA256 extends HashMac implements Cloneable
     }
 
 
-    protected void coreUpdate(byte[] block, int offset)
+    @Override
+	protected void coreUpdate(byte[] block, int offset)
     {
 
         int[] W = buffer;
@@ -163,16 +178,13 @@ public class SHA256 extends HashMac implements Cloneable
 
     public static boolean self_test ()
     {
-       SHA256 s1, s2, s3, s4, s5;
+       SHA256 s1, s2;
        byte[] ba;
        int i;
        String hstr;
        
        s1 = new SHA256(); 
        s2 = new SHA256(); 
-       s3 = new SHA256(); 
-       s4 = new SHA256(); 
-       s5 = new SHA256(); 
 
        // length
        if ( s1.getDigestLength() != 32 )
@@ -191,8 +203,9 @@ public class SHA256 extends HashMac implements Cloneable
        }
        
        // Test value "empty"
-       s2.update( "".getBytes() );
-       hstr = Util.bytesToHex( s2.digest() );
+       s1.reset();
+       s1.update( "".getBytes() );
+       hstr = Util.bytesToHex( s1.digest() );
        if ( !hstr.equals( 
            "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855" ) )
        {
@@ -201,8 +214,9 @@ public class SHA256 extends HashMac implements Cloneable
        }
        
        // Test value "abc"
-       s3.update( "abc".getBytes() );
-       hstr = Util.bytesToHex( s3.digest() );
+       s1.reset();
+       s1.update( "abc".getBytes() );
+       hstr = Util.bytesToHex( s1.digest() );
        if ( !hstr.equals( 
        "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad" ) )
        {
@@ -211,8 +225,8 @@ public class SHA256 extends HashMac implements Cloneable
        }
        
        // Test value "abcdbcdecdefdefgefghfghighijhijkijkljklmklmnlmnomnopnopq"
-       s4.update( "abcdbcdecdefdefgefghfghighijhijkijkljklmklmnlmnomnopnopq".getBytes() );
-       hstr = Util.bytesToHex( s4.digest() );
+       s2.update( "abcdbcdecdefdefgefghfghighijhijkijkljklmklmnlmnomnopnopq".getBytes() );
+       hstr = Util.bytesToHex( s2.digest() );
        if ( !hstr.equals( 
        "248d6a61d20638b8e5c026930c3e6039a33ce45964ff2167f6ecedd419db06c1" ) )
        {
@@ -221,12 +235,13 @@ public class SHA256 extends HashMac implements Cloneable
        }
 
        // Test value "a" * 1000
+       s1.reset();
        ba = new byte[1000];
        for ( i = 0; i < 1000; i++ )
           ba[i] = 'a';
        for ( i = 0; i < 1000; i++ )
-          s5.update( ba );
-       hstr = Util.bytesToHex( s5.digest() );
+          s1.update( ba );
+       hstr = Util.bytesToHex( s1.digest() );
        if ( !hstr.equals( 
        "cdc76e5c9914fb9281a1c7e284d73e67f1809a48a497200e046d39ccc7112cd0" ) )
        {

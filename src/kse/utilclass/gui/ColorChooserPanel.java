@@ -119,6 +119,8 @@ public class ColorChooserPanel extends JPanel {
 	 * 'getSelectedColor()' method. 
 	 * <p>The source of the event is this panel; the action command is named
 	 * "chooser.color.selected".
+	 * 
+	 * @param l {@code ActionListener} to add
 	 */
 	public void addActionListener (ActionListener l) {
 		Objects.requireNonNull(l);

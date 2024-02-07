@@ -26,6 +26,7 @@ Boston, MA 02111-1307, USA, or go to http://www.gnu.org/copyleft/gpl.html.
 import java.awt.Color;
 import java.awt.Component;
 import java.awt.Graphics;
+import java.util.Objects;
 
 import javax.swing.Icon;
 
@@ -53,55 +54,71 @@ public class ColorSwatch implements Icon {
    * Creates a standard 14 x 14 swatch with a black border and white background.
    */
   public ColorSwatch() {
-
   }
 
   /**
    * Creates a swatch of the specified size with a black border and white
    * background.
+   * 
+   * @param size int swatch size in pixel 
    */
-  public ColorSwatch(int size) {
-    setSwatchSize(size);
+  public ColorSwatch (int size) {
+     setSwatchSize(size);
   }
 
   /**
    * Creates a swatch of the specified size with a black border and white
    * background and determines whether or n not the border should be painted.
+   * 
+   * @param size int swatch size in pixel 
+   * @param borderPainted boolean true = border is painted, false = border 
+   *        is not painted
    */
-  public ColorSwatch(int size, boolean borderPainted) {
-    setSwatchSize(size);
-    setBorderPainted(borderPainted);
+  public ColorSwatch (int size, boolean borderPainted) {
+     setSwatchSize(size);
+     setBorderPainted(borderPainted);
   }
 
   /**
    * 
+   * @param color {@code Color} colour this swatch represents
    */
-  public ColorSwatch(Color color) {
-    setColor(color);
+  public ColorSwatch (Color color) {
+     setColor(color);
   }
 
   /**
+   * Creates a swatch of the specified size and showing the given colour.
    * 
+   * @param size int swatch size in pixel 
+   * @param color {@code Color} colour this swatch represents
    */
-  public ColorSwatch(int size, Color color) {
-    setSwatchSize(size);
-    setColor(color);
+  public ColorSwatch (int size, Color color) {
+     setSwatchSize(size);
+     setColor(color);
   }
 
   /**
+   * Creates a swatch of the specified size and showing the given colours
+   * for body and border.
    * 
+   * @param size int swatch size in pixel 
+   * @param color {@code Color} colour this swatch represents
+   * @param borderColor {@code Color} colour of the border
    */
-  public ColorSwatch(int size, Color color, Color borderColor) {
-    setSwatchSize(size);
-    setColor(color);
-    setBorderColor(borderColor);
-    setBorderPainted(true);
+  public ColorSwatch (int size, Color color, Color borderColor) {
+     setSwatchSize(size);
+     setColor(color);
+     setBorderColor(borderColor);
+     setBorderPainted(true);
   }
 
   /**
    * Sets the size of this swatch.
+   * 
+   * @param size int size of the box in pixel 
    */
-  public void setSwatchSize(int size) {
+  public void setSwatchSize (int size) {
     if (size > 0)
       ourSwatchSize = size;
     else
@@ -117,27 +134,38 @@ public class ColorSwatch implements Icon {
 
   /**
    * Determines whether or not this swatch's border should be painted.
+   * 
+   * @param borderPainted boolean true = border is painted, false = border 
+   *        is not painted
    */
-  public void setBorderPainted(boolean borderPainted) {
+  public void setBorderPainted (boolean borderPainted) {
     ourBorderPainted = borderPainted;
   }
 
   /**
    * Returns whether or not this swatch's border is painted.
+   * 
+   * @return boolean true = border is painted
    */
   public boolean isBorderPainted() {
     return ourBorderPainted;
   }
 
   /**
-   * Sets the color of this swatch's border.
+   * Sets the color of this swatch's border. With {@code null} border
+   * painting is switched off.
+   * 
+   * @param color {@code Color} border color
    */
-  public void setBorderColor(Color color) {
-    ourBorderColor = color;
+  public void setBorderColor (Color color) {
+	 Objects.requireNonNull(color);
+	 ourBorderColor = color;
   }
 
   /**
    * Returns the color of this swatch's border.
+   * 
+   * @return {@code Color}
    */
   public Color getBorderColor() {
     return ourBorderColor;
@@ -145,14 +173,19 @@ public class ColorSwatch implements Icon {
 
   /**
    * Sets the color that this swatch represents.
+   * 
+   * @param color {@code Color} 
    */
-  public void setColor(Color color) {
+  public void setColor (Color color) {
+	Objects.requireNonNull(color);
     ourSwatchIsMultiColor = false;
     ourSwatchColor = color;
   }
 
   /**
    * Returns the color that this swatch represents.
+   * 
+   * @return {@code Color}
    */
   public Color getColor() {
     return ourSwatchColor;
@@ -161,12 +194,14 @@ public class ColorSwatch implements Icon {
   /**
    * Sets this swatch to represent more than one color.
    */
-  public void setMultiColor() {
+  public void setMultiColor () {
     ourSwatchIsMultiColor = true;
   }
 
   /**
    * Returns whether or not this swatch represents more than one color.
+   * 
+   * @return boolean true = swatch is multi-colored 
    */
   public boolean isMultiColor() {
     return ourSwatchIsMultiColor;
@@ -175,8 +210,10 @@ public class ColorSwatch implements Icon {
   /**
    * Determines whether or not this swatch is void. If the swatch is void, it
    * will not be painted at all.
+   * 
+   * @param isVoid boolean true = not painted, false = painted 
    */
-  public void setVoid(boolean isVoid) {
+  public void setVoid (boolean isVoid) {
     // When true, this icon will not be painted at all.
     ourSwatchIsVoid = isVoid;
   }
@@ -184,6 +221,8 @@ public class ColorSwatch implements Icon {
   /**
    * Returns whether this swatch is void. If the swatch is void, it will not be
    * painted at all.
+   * 
+   * @return boolean  true = swatch is not painted, false = swatch is painted 
    */
   public boolean isVoid() {
     return ourSwatchIsVoid;

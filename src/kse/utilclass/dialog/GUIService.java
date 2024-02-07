@@ -255,8 +255,11 @@ public class GUIService {
 
 	/** Displays an information message without parent component. It will get 
 	 *  centred within the application's mainframe.
-	 * <p>Waits until the message is confirmed or the calling thread is 
+	 * <p>Dialog waits until the message is confirmed or the calling thread is 
 	 * interrupted. 
+	 * 
+	 * @param title String dialog title  
+	 * @param text  String message to display
 	 */
 	public static void infoMessage (String title, String text) {
 	   infoMessage( null, title, text );
@@ -339,8 +342,9 @@ public class GUIService {
 	 * @param task <code>Runnable</code>
 	 * @param wait boolean if true 'invokeAndWait' is executed, otherwise 
 	 *             'invokeLater'
-	 * @throws InvocationTargetException
-	 * @throws InterruptedException
+	 * @throws InvocationTargetException - executing task caused an exception
+	 * @throws InterruptedException - if the calling thread is interrupted 
+	 *         while waiting for execution termination
 	 */
 	public static void performOnEDT (Runnable task, boolean wait) 
 			throws InvocationTargetException, InterruptedException {
@@ -402,6 +406,7 @@ public class GUIService {
 	/** Shows the given image in a separate dialog which has no parent.
 	 * 
 	 * @param img {@code Image}
+	 * @param modal boolean whether the showing dialog is modal
 	 */
 	public static void test_show_image (Image img, boolean modal) {
 		System.out.println("-- showing image of size (" + img.getWidth(null) + ", " + img.getHeight(null) + ")");
