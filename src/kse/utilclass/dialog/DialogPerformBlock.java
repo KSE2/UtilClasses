@@ -35,7 +35,9 @@ import kse.utilclass.dialog.GSDialog.ButtonType;
  * which is organised by the dialog class.
  * 
  */
-public abstract class DialogPerformBlock {
+public abstract class DialogPerformBlock implements java.io.Serializable {
+	
+    private static final long serialVersionUID = 785169712350467562L;
 	
 	private boolean userConfirmed;
 	private boolean noTerminated;

@@ -40,13 +40,15 @@ Boston, MA 02111-1307, USA, or go to http://www.gnu.org/copyleft/gpl.html.
 */
 
 public class GSDialog extends JDialog {
+	
+	private static final long serialVersionUID = -99786334991923723L;
 	public enum ButtonType {YES_BUTTON, NO_BUTTON, CANCEL_BUTTON, USER_BUTTON}
 	
 	private ButtonType[] buttonTypes;
 	private DialogPerformBlock performBlock;
 	private JPanel buttonBar;
 	private ButtonBarModus buttonBarModus = ButtonBarModus.OK;
-	private ActionListener buttonPerformer = new ButtonPerformer();
+	private transient ActionListener buttonPerformer = new ButtonPerformer();
 	private boolean closeableByEscape = true;
 	private boolean closedByEscape;
 	private boolean closedByButton;

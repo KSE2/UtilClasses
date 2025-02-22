@@ -45,8 +45,10 @@ import javax.xml.bind.annotation.XmlRootElement;
  */
 @XmlRootElement(name = "UUID")
 @XmlAccessorType(XmlAccessType.FIELD)
-public final class UUID implements Cloneable, Comparable<UUID>, Serializable
-{
+public final class UUID implements Cloneable, Comparable<UUID>, Serializable {
+	
+    private static final long serialVersionUID = 701182055172594442L;
+    
 	private final byte []		uidValue	= new byte[16];
 	private       int           hashcode;
 

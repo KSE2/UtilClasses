@@ -1,5 +1,5 @@
 /*
- *  File: Global.java
+ *  File: Log.java
  * 
  *  Project PWSLIB3
  *  @author Wolfgang Keller
@@ -27,8 +27,8 @@ import javax.swing.SwingUtilities;
  *  Log in org.jpws.pwslib.global
  *  <p>Protocol, log and debug printing class.
  */
-public class Log
-{
+public class Log {
+	
    public static final int DEFAULT_DEBUGLEVEL = 1;
    public static final int DEFAULT_LOGLEVEL = 1;
    

@@ -60,7 +60,6 @@ import java.lang.reflect.InvocationTargetException;
 import javax.swing.BorderFactory;
 import javax.swing.Icon;
 import javax.swing.JButton;
-import javax.swing.JDialog;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.SwingConstants;
@@ -83,6 +82,8 @@ public class MessageDialog extends GSDialog {
 /**
  * Creates an empty, non-modal info message dialog with the active mainframe
  * as owner and OK + CANCEL buttons. 
+ * 
+ * @throws HeadlessException 
  */ 
 public MessageDialog () throws HeadlessException {
    super(GUIService.getMainFrame(), ButtonBarModus.OK_BREAK, false);
@@ -469,28 +470,28 @@ public static MessageDialog createMessageDialog (
 	return dlgA[0];
 }
 
-/** Runs "setVisible(true)" on the given dialog guaranteed on the EDT.
- * @param dialog JDialog
- */
-private static void setDialogVisible ( final JDialog dialog ) {
-	
-    Runnable run = new Runnable() {
-		@Override
-		public void run() {
-	       try { dialog.setVisible(true); }
-	       catch ( Exception e )
-	       {}
-		}
-    };
-
-    try {
-     	  GUIService.performOnEDT(run, true);
-	  } catch (InvocationTargetException e) {
-		e.printStackTrace();
-	  } catch (InterruptedException e) {
-		e.printStackTrace();
-	  }
-}
+///** Runs "setVisible(true)" on the given dialog guaranteed on the EDT.
+// * @param dialog JDialog
+// */
+//private static void setDialogVisible ( final JDialog dialog ) {
+//	
+//    Runnable run = new Runnable() {
+//		@Override
+//		public void run() {
+//	       try { dialog.setVisible(true); }
+//	       catch ( Exception e )
+//	       {}
+//		}
+//    };
+//
+//    try {
+//     	  GUIService.performOnEDT(run, true);
+//	  } catch (InvocationTargetException e) {
+//		e.printStackTrace();
+//	  } catch (InterruptedException e) {
+//		e.printStackTrace();
+//	  }
+//}
 
 // ***********  INNER CLASS  ******************
 

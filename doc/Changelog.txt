@@ -1,6 +1,23 @@
 Project UtilClasses
 CHANGELOG 
 
+*** Release V 0-13-0 ***, 21. Feb. 2025
+Changes since version 0-12-0
+Returned to the GNU Lesser GPL 3.0 license (2007).
+
+All classes which can be expected to get serialised have been properly
+tagged with the Serializable interface and serialVersionUID. A test is
+implemented to check many of these classes.
+
+Classes ArraySet, SortedArraySet, SortedArrayList have been extended and
+optimised in their implementations. Tests for these classes have been
+extended or invented in the first place. 
+
+New utility classes: "Serialiser" aids to serialise and de-serialise 
+instances of classes implementing the java.io.Serializable interface.
+"LongResult" is a class to transport modifiable long integer values.
+
+
 *** Release V 0-12-0 ***, 06. Feb. 2024
 Changes since version 0-11-0
 

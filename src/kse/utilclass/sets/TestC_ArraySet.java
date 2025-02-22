@@ -24,17 +24,22 @@ Boston, MA 02111-1307, USA, or go to http://www.gnu.org/copyleft/gpl.html.
 */
 
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashMap;
+import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Random;
 
 import org.junit.Test;
+
+import kse.utilclass.io.Serialiser;
+import kse.utilclass.misc.Util;
 
 public class TestC_ArraySet {
 
@@ -83,15 +88,23 @@ public void initial () {
 	assertFalse(s1.contains(null));
 	assertFalse(s1.contains(new Object()));
 	assertTrue(countIterator(s1.iterator()) == 0);
+	Object[] arr = s1.toArray();
+	assertTrue(arr.length == 0);
+	arr = s1.toArray(new Object[0]);
+	assertTrue(arr.length == 0);
 
 	// initial capacity constructor of zero
 	int capacity = 0;
 	ArraySet<Object> s2 = new ArraySet<Object>(capacity);
-	assertTrue(s2.getCurrentCapacity() == capacity);
+	assertTrue(s2.getCurrentCapacity() == 0);
 	assertTrue(s2.size() == 0);
 	assertFalse(s2.contains(null));
 	assertFalse(s2.contains(new Object()));
 	assertTrue(countIterator(s2.iterator()) == 0);
+	arr = s2.toArray();
+	assertTrue(arr.length == 0);
+	arr = s2.toArray(new Object[0]);
+	assertTrue(arr.length == 0);
 	
 	// initial capacity constructor of 68
 	capacity = 68;
@@ -101,6 +114,10 @@ public void initial () {
 	assertFalse(s2.contains(null));
 	assertFalse(s2.contains(new Object()));
 	assertTrue(countIterator(s2.iterator()) == 0);
+	arr = s2.toArray();
+	assertTrue(arr.length == 0);
+	arr = s2.toArray(new Object[0]);
+	assertTrue(arr.length == 0);
 	
 	// constructor w/ zero collection
 	ArrayList<String> sarr = new ArrayList<>();
@@ -110,35 +127,84 @@ public void initial () {
 	assertFalse(s3.contains(null));
 	assertFalse(s3.contains(new Object()));
 	assertTrue(countIterator(s3.iterator()) == 0);
+	arr = s3.toArray();
+	assertTrue(arr.length == 0);
+	arr = s3.toArray(new Object[0]);
+	assertTrue(arr.length == 0);
 	
-	// constructor w/ string collection (size 3)
+	// constructor w/ string collection (size 3) incl. duplicate
 	sarr.add("Bernd das Brot");
 	sarr.add("Sendung mit der Maus");
 	sarr.add("Karina");
+	sarr.add("Sendung mit der Maus");
+	sarr.add(null);
+	sarr.add(null);
 	s3 = new ArraySet<Object>(sarr);
 	assertTrue(s3.getCurrentCapacity() == ArraySet.DEFAULT_CAPACITY);
-	assertTrue(s3.size() == 3);
-	assertFalse(s3.contains(null));
+	assertTrue(s3.size() == 4);
 	assertFalse(s3.contains(new Object()));
+	assertTrue(s3.contains(null));
 	assertTrue(s3.contains("Karina"));
 	assertTrue(s3.contains("Bernd das Brot"));
 	assertTrue(s3.contains("Sendung mit der Maus"));
-	assertTrue(countIterator(s3.iterator()) == 3);
+	assertTrue(countIterator(s3.iterator()) == 4);
+	arr = s3.toArray();
+	assertTrue("length was " + arr.length, arr.length == 4);
+	arr = s3.toArray(new Object[0]);
+	assertTrue(arr.length == 4);
 	
-	// constructor w/ string collection (size 4) incl. duplicate
+	// constructor w/ string array (size 6) incl. duplicate
+	sarr.add(null);
 	sarr.add("Bernd das Brot");
 	sarr.add("Sendung mit der Maus");
 	sarr.add("Karina");
 	sarr.add("Bernd das Brot");
-	s3 = new ArraySet<Object>(sarr);
+	sarr.add(null);
+	s3 = new ArraySet<Object>(sarr.toArray());
 	assertTrue(s3.getCurrentCapacity() == ArraySet.DEFAULT_CAPACITY);
-	assertTrue(s3.size() == 3);
-	assertFalse(s3.contains(null));
+	assertTrue(s3.size() == 4);
 	assertFalse(s3.contains(new Object()));
+	assertTrue(s3.contains(null));
 	assertTrue(s3.contains("Karina"));
 	assertTrue(s3.contains("Bernd das Brot"));
 	assertTrue(s3.contains("Sendung mit der Maus"));
-	assertTrue(countIterator(s3.iterator()) == 3);
+	assertTrue(countIterator(s3.iterator()) == 4);
+	arr = s3.toArray();
+	assertTrue(arr.length == 4);
+	arr = s3.toArray(new Object[0]);
+	assertTrue(arr.length == 4);
+	
+	// null constructor (array)
+	s3 = new ArraySet<Object>((String[])null);
+	assertTrue(s3.getCurrentCapacity() == 0);
+	assertTrue(s3.size() == 0);
+	assertFalse(s3.contains(new Object()));
+	assertFalse(s3.contains(null));
+	assertTrue(countIterator(s3.iterator()) == 0);
+	arr = s3.toArray();
+	assertTrue(arr.length == 0);
+	arr = s3.toArray(new Object[0]);
+	assertTrue(arr.length == 0);
+	
+	// null constructor (collection)
+	s3 = new ArraySet<Object>((List<String>)null);
+	assertTrue(s3.getCurrentCapacity() == 0);
+	assertTrue(s3.size() == 0);
+	assertFalse(s3.contains(new Object()));
+	assertFalse(s3.contains(null));
+	assertTrue(countIterator(s3.iterator()) == 0);
+	arr = s3.toArray();
+	assertTrue(arr.length == 0);
+	arr = s3.toArray(new Object[0]);
+	assertTrue(arr.length == 0);
+	
+//	ArrayList<String> list = new ArrayList<String>();
+//	list.add("Earschlitten");
+//	arr = list.toArray();
+//	assertTrue(arr.length == 1);
+//	arr = list.toArray(new Integer[0]);
+//	assertTrue(arr.length == 1);
+	
 	
 	// fails: constructor w/ negative capacity
 	try {
@@ -271,7 +337,6 @@ public void clear () {
 	String st3 = null;
 	String st4 = "Segelsetzer der Regattakanäle";
 	String st5 = "";
-	boolean ok;
 
 	// empty constructor
 	ArraySet<Object> s1 = new ArraySet<Object>();
@@ -324,7 +389,8 @@ public void ensure_capacity () {
 	
 	// internal enlarge capacity 
 	s1.add("new string content");
-	assertTrue(s1.getCurrentCapacity() == n + n/2);
+	int cap = s1.getCurrentCapacity();
+	assertTrue(cap > n & cap <= 2*n);
 	assertTrue(s1.size() == n+1);
 
 	// external enlarge capacity
@@ -356,8 +422,88 @@ public void ensure_capacity () {
 }
 
 @Test
-public void taylorCapacity () {
+public void taylor_capacity () {
+	ArraySet<String> set = new ArraySet<>();
+	while (set.size() < 1200) {
+		set.add(randomString());
+	}
 	
+	set.ensureCapacity(3000);
+	int cap = set.getCurrentCapacity();
+    System.out.println("-- current capacity is  " + cap);
+	assertTrue("initial capacity error: " + cap, cap >= 3000);
+	
+	set.taylorCapacity();
+    System.out.println("-- taylored capacity to  " + set.getCurrentCapacity());
+	assertTrue(set.size() == 1200);
+	cap = set.getCurrentCapacity();
+	assertTrue("resulting capacity error: " + cap, cap <= 1200 * 5/4);
+}
+
+@Test
+public void toArray () {
+	ArraySet<String> set1 = new ArraySet<>();
+	ArraySet<String> set2 = preloadedStr(25);
+	ArraySet<Integer> set3 = new ArraySet<Integer>();
+	
+	set3.add(230); set3.add(0); set3.add(null); set3.add(8967);
+	
+	Object[] arr1 = set1.toArray();
+	assertNotNull(arr1);
+	assertTrue(arr1.length == 0);
+	arr1 = set2.toArray();
+	assertTrue(arr1.length == 25);
+	arr1 = set3.toArray();
+	assertTrue(arr1.length == 4);
+
+	// value control
+	assertTrue("array value error", (Integer)arr1[0] == 230);
+	assertTrue("array value error", (Integer)arr1[1] == 0);
+	assertTrue("array value error", (Integer)arr1[2] == null);
+	assertTrue("array value error", (Integer)arr1[3] == 8967);
+	
+	// typed array control
+	String[] arr2 = set1.toArray(new String[0]);
+	assertNotNull(arr2);
+	assertTrue(arr2.length == 0);
+	
+	Integer[] arr3 = set3.toArray(new Integer[0]);
+	assertTrue("array value error", arr3[0] == 230);
+	assertTrue("array value error", arr3[1] == 0);
+	assertTrue("array value error", arr3[2] == null);
+	assertTrue("array value error", arr3[3] == 8967);
+}
+
+@Test
+public void identity () {
+   ArraySet<String> s1 = new ArraySet<>();
+   ArraySet<String> s2 = new ArraySet<>();
+   assertTrue(s1.equals(s2));
+   assertTrue(s1.hashCode() == s2.hashCode());
+   assertTrue(s1.equals(s1));
+
+   // unequal sets of elements
+   s2 = preloadedStr(12);
+   assertFalse(s1.equals(s2));
+   assertFalse(s1.hashCode() == s2.hashCode());
+   s1 = preloadedStr(12);
+   assertFalse(s1.equals(s2));
+   assertFalse(s1.hashCode() == s2.hashCode());
+   assertTrue(s1.equals(s1));
+
+   // two identical sets, instantiated w/ reverse orders of elements
+   String st1 = "Hans Dampf in allen Gassen";
+   String st2 = "Kurfürsten speisen am Mittag";
+   String st3 = "Benediktiner Mönchen essen gar nicht";
+   String[] arr = {st1, st2, st3};
+   s1 = new ArraySet<>(arr);
+   List<String> list = Arrays.asList(arr);
+   Collections.reverse(list);
+   s2 = new ArraySet<>(list);
+   assertTrue(s1.equals(s1));
+   assertTrue(s1.equals(s2));
+   assertTrue(s1.hashCode() == s2.hashCode());
+   assertFalse(s1.indexOf(st3) == s2.indexOf(st3));
 }
 
 @Test
@@ -516,11 +662,6 @@ public void negation () {
 	assertTrue(set2.containsAll(vlist2));
 }
 
-private void test_hashmap () {
-	HashMap<Integer, Object> hm = new HashMap<Integer, Object>();
-	
-}
-
 @Test
 public void xoring () {
 	// sets
@@ -565,6 +706,54 @@ public void xoring () {
 	// test argument set unmodified
 	assertTrue(set2.size() == n2);
 	assertTrue(set2.containsAll(vlist2));
+}
+
+@SuppressWarnings("unchecked")
+@Test
+public void serialisation () throws IOException {
+	int n1 = 120;
+	ArraySet<String> set1 = preloadedStr(n1);
+	ArraySet<String> set2 = preloadedStr(12);
+	ArraySet<String> set3, set4, set5, set6;
+	Object[] varr1 = set1.toArray();
+	String[] varr2 = set2.toArray(new String[set2.size()]);
+	Serialiser sss = new Serialiser();
+	
+	// serialise
+	byte[] ser1 = sss.serialise(set1);
+	assertNotNull("serialisation is null", ser1);
+	assertTrue("serialisation is empty, len = " + ser1.length, ser1.length > 100);
+	byte[] ser2 = sss.serialise(set2);
+	assertNotNull("serialisation is null", ser2);
+	assertTrue("serialisation is empty", ser2.length > 100);
+	
+	// de-serialise
+	set4 = (ArraySet<String>) sss.deserialiseObject(ser2);
+	assertNotNull("de-serialisation is null", set4);
+	assertTrue("serialisation is invalid", set4.equals(set2));
+	
+	set3 = (ArraySet<String>) sss.deserialiseObject(ser1);
+	assertNotNull("de-serialisation is null", set3);
+	assertTrue("serialisation is invalid", set3.equals(set1));
+	
+	// we also control the sequence of values bc. ArraySet is the base class
+	// for sorted structures
+	Object[] varr3 = set3.toArray();
+	assertTrue("sorting of values changed after de-serial.", Arrays.equals(varr1, varr3));
+	String[] varr4 = set2.toArray(new String[set2.size()]);
+	assertTrue("sorting of values changed after de-serial.", Arrays.equals(varr2, varr4));
+
+	// empty value
+	set5 = new ArraySet<String>();
+	assertTrue(set5.isEmpty());
+	byte[] ser3 = sss.serialise(set5);
+	assertNotNull("serialisation is null", ser3);
+	assertTrue("serialisation is empty", ser3.length > 10);
+	set6 = (ArraySet<String>) sss.deserialiseObject(ser3);
+	assertTrue(set6.isEmpty());
+	assertTrue("serialisation is invalid", set5.equals(set6));
+	
+	
 }
 
 }

@@ -24,16 +24,22 @@ Boston, MA 02111-1307, USA, or go to http://www.gnu.org/copyleft/gpl.html.
 */
 
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
+import java.io.IOException;
+import java.io.NotSerializableException;
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.Iterator;
 import java.util.List;
 
 import org.junit.Test;
 
+import kse.utilclass.io.Serialiser;
 import kse.utilclass.misc.Util;
 
 public class TestC_SortedArraySet {
@@ -200,6 +206,7 @@ public void add_remove () {
 	assertTrue(s1.size() == 0);
 	assertFalse(s1.contains(st1));
 	assertTrue(Util.countIterator(s1.iterator()) == 0);
+	assertTrue("unsortiert", Util.isSortedSet(s1, null));
 	
 	// add three
 	ok = s1.add(st1);
@@ -247,6 +254,7 @@ public void add_remove () {
 	assertFalse(s1.contains(st2));
 	assertFalse(s1.contains(st3));
 	assertTrue(Util.countIterator(s1.iterator()) == 0);
+	assertTrue("unsortiert", Util.isSortedSet(s1, null));
 	
 	// add bulk
 	String[] blk1 = {st5, st1, st2, st5, st3, st3, st4, st5};
@@ -291,9 +299,58 @@ public void contains () {
 	// contains itself
 	int count = 0;
 	for (String s : s1) {
-		assertTrue("not contained: " + s, s1.contains(s));
+		assertTrue("not contained element: " + s, s1.contains(s));
 		System.out.println(++count + " : " + s);
 	}
+	
+	// contains alien class
+	Integer i = 2988;
+	assertFalse(s1.contains(i));
+}
+
+@Test
+@SuppressWarnings("unchecked")
+public void clone_test () {
+	int n = 12;
+	SortedArraySet<String> s1 = preloadedStr(n);
+	SortedArraySet<String> s2 = (SortedArraySet<String>) s1.clone();
+	assertTrue(s2.size() == n);
+	
+	Iterator<String> it1 = s1.iterator();
+	Iterator<String> it2 = s2.iterator();
+	for (int i = 0; i < n; i++) {
+		assertTrue("clone compare test failed", it1.next().equals(it2.next()));
+	}
+}
+
+@Test
+@SuppressWarnings({ "unchecked", "unlikely-arg-type" })
+public void equals_test () {
+	int n = 32;
+	SortedArraySet<String> s1 = preloadedStr(n);
+	SortedArraySet<String> s2 = (SortedArraySet<String>) s1.clone();
+	SortedArraySet<String> s3 = preloadedStr(n);
+
+	// equal relations
+	assertTrue("compare equals failed", s1.equals(s2));
+	assertTrue("compare equals failed", s2.equals(s1));
+	assertTrue("compare equals failed", s2.equals(s2));
+	assertTrue("compare equals hashcode failed", s1.hashCode() == s2.hashCode());
+
+	// non-equal relations
+	assertFalse("compare non-equals failed", s1.equals(null));
+	assertFalse("compare non-equals failed", s1.equals(s3));
+	assertFalse("compare non-equals failed", s3.equals(s1));
+	
+	s2.setComparator(new ReverseComparator<String>());
+	assertFalse("non-equals reverse sorting failed", s1.equals(s2));
+	assertFalse("reverse sorting hashcode failed", s1.hashCode() == s2.hashCode());
+	
+	// alien compare
+	assertFalse("alien compare failed", s1.equals(new Integer(8)));
+	assertFalse("null compare failed", s1.equals(null));
+	List<String> list = new ArrayList<>(s1);
+	assertTrue("identical collection compare failed", s1.equals(list));
 }
 
 @Test
@@ -304,7 +361,6 @@ public void clear () {
 	String st3 = "   ";
 	String st4 = "Segelsetzer der Regattakanäle";
 	String st5 = "";
-	boolean ok;
 
 	// empty constructor
 	SortedArraySet<Object> s1 = new SortedArraySet<Object>();
@@ -362,7 +418,7 @@ public void ensure_capacity () {
 	
 	// internal enlarge capacity 
 	s1.add("new string content");
-	assertTrue(s1.getCurrentCapacity() == n + n/2);
+	assertTrue(s1.getCurrentCapacity() == n * 2);
 	assertTrue(s1.size() == n+1);
 
 	// external enlarge capacity
@@ -613,4 +669,84 @@ public void xoring () {
 	assertTrue(set2.containsAll(vlist2));
 }
 
+@SuppressWarnings("unchecked")
+@Test
+public void serialisation () throws IOException {
+	int n1 = 12;
+	SortedArraySet<String> set1 = preloadedStr(n1);
+	SortedArraySet<String> set2 = preloadedStr(12);
+	SortedArraySet<String> set3, set4, set5, set6;
+	Serialiser sss = new Serialiser();
+	
+	// serialise
+	byte[] ser1 = sss.serialise(set1);
+	assertNotNull("serialisation is null", ser1);
+	assertTrue("serialisation is empty, len = " + ser1.length, ser1.length > 100);
+	byte[] ser2 = sss.serialise(set2);
+	assertNotNull("serialisation is null", ser2);
+	assertTrue("serialisation is empty", ser2.length > 100);
+	
+	// de-serialise
+	set3 = (SortedArraySet<String>) sss.deserialiseObject(ser1);
+	assertNotNull("de-serialisation is null", set3);
+	assertTrue("serialisation is invalid", set3.equals(set1));
+	assertTrue("unsortiert", Util.isSortedSet(set3, null));
+
+	set4 = (SortedArraySet<String>) sss.deserialiseObject(ser2);
+	assertNotNull("de-serialisation is null", set4);
+	assertTrue("serialisation is invalid", set4.equals(set2));
+	
+	// empty value
+	set5 = new SortedArraySet<String>();
+	assertTrue(set5.isEmpty());
+	byte[] ser3 = sss.serialise(set5);
+	assertNotNull("serialisation is null", ser3);
+	assertTrue("serialisation is empty", ser3.length > 10);
+	set6 = (SortedArraySet<String>) sss.deserialiseObject(ser3);
+	assertTrue(set6.isEmpty());
+	assertTrue("serialisation is invalid", set5.equals(set6));
+	
+	// set w/ non-serialisable comparator
+	try {
+		set3.setComparator(new ReverseComparator<String>());
+		ser1 = sss.serialise(set3);
+		fail("expected NotSerializableException");
+	} catch (NotSerializableException e) {
+		System.err.println(e);
+	}
+	
+	// set w/ serialisable comparator
+	Comparator<String> comp = new ReverseComparator2<String>();
+	set3.setComparator(comp);
+	assertTrue("unsortiert", Util.isSortedSet(set3, comp));
+	ser1 = sss.serialise(set3);
+	set4 = (SortedArraySet<String>) sss.deserialiseObject(ser1);
+	assertTrue("serialisation w/ comparator is invalid", set3.equals(set4));
+	assertNotNull("comparator missing after restore", set4.comparator());
+	assertNotNull("illegal comparator after restore", set4.comparator() instanceof ReverseComparator2);
+	assertTrue("unsortiert", Util.isSortedSet(set4, comp));
+}
+
+private static class ReverseComparator<E extends Comparable<E>> implements Comparator<E> {
+
+	@Override
+	public int compare (E o1, E o2) {
+		if (o1 == null | o2 == null)
+			throw new NullPointerException();
+		int c = o1.compareTo(o2);
+		return -c;
+	}
+}
+
+private static class ReverseComparator2<E extends Comparable<E>> implements Comparator<E>, Serializable {
+    private static final long serialVersionUID = 988276557223200L;
+
+	@Override
+	public int compare (E o1, E o2) {
+		if (o1 == null | o2 == null)
+			throw new NullPointerException();
+		int c = o1.compareTo(o2);
+		return -c;
+	}
+}
 }

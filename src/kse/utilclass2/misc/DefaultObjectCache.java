@@ -38,7 +38,12 @@ import kse.utilclass.misc.Log;
  * wrapper for the user's object.
  * <p>Peculiarity of this class is that cache containment can be limited by three parameters: 
  * 1) number of entries, 2) cached data size, and 3) object idle time (unaccessed). These parameters 
- * can be set during instance creation or modified at any later time of cache existence.        
+ * can be set during instance creation or modified at any later time of cache existence.    
+ * 
+ * <p><b>Security Note</b>
+ * <br>This class has the status of a container and it is by default serialisable.
+ * Serialisation, however, must fail if any object contained does not implement
+ * the {@code java.io.Serialization} interface. 
  * 
  * @author Wolfgang Keller
  *
@@ -49,6 +54,8 @@ import kse.utilclass.misc.Log;
 public class DefaultObjectCache <K, V extends DefaultObjectCache.CacheObject<?>> 
        extends LinkedHashMap<K, V> 
 {
+   private static final long serialVersionUID = 969949487903222429L;
+   
    /** maximum number of entries in the cache (0=unlimited) */ 
    private int maxEntries;
    /** maximum cached data size (bytes; 0=unlimited) */ 
@@ -335,7 +342,8 @@ public class DefaultObjectCache <K, V extends DefaultObjectCache.CacheObject<?>>
     * only one element, the user object of type E.
     * 
     */
-   public static class CacheObject<E> {
+   public static class CacheObject<E> implements java.io.Serializable {
+	  private static final long serialVersionUID = 732382959263720223L;
       
       protected E object;
       protected int size;

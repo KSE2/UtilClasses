@@ -26,8 +26,7 @@ package kse.utilclass.misc;
  * @author  Jeroen C. van Gelderen (gelderen@cryptix.org)
  *          <br>Modified by Wolfgang Keller, 2004
  */
-public class SHA256 extends HashMac implements Cloneable
-{
+public class SHA256 extends HashMac implements Cloneable {
 
 // Constants
 //...........................................................................
@@ -81,8 +80,8 @@ public class SHA256 extends HashMac implements Cloneable
     private SHA256 ( SHA256 src )
     {
        super( src );
-       this.context = (int[])src.context.clone();
-       this.buffer  = (int[])src.buffer.clone();
+       this.context = src.context.clone();
+       this.buffer  = src.buffer.clone();
     }
 
 

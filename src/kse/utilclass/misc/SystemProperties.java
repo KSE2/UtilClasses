@@ -28,7 +28,6 @@ import java.beans.PropertyChangeListener;
 
 public interface SystemProperties  {
 
-
    /**
     * Adds a <code>PropertyChange</code> listener. 
     *

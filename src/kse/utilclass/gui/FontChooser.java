@@ -54,6 +54,8 @@ import kse.utilclass.dialog.GSDialog;
 import kse.utilclass.dialog.GUIService;
 
 public class FontChooser extends GSDialog {
+  private static final long serialVersionUID = 6998282871464728723L;
+	   
   /** Available font styles. */
   private static final String[] STYLES = new String[] {"Plain", "Bold", "Italic", "Bold Italic"};
 
@@ -76,8 +78,8 @@ public class FontChooser extends GSDialog {
    * using the specified font.
    */
   private FontChooser (Window parent, Font font) {
-    super(parent, ButtonBarModus.OK_BREAK, true);
-    initAll(font);
+     super(parent, ButtonBarModus.OK_BREAK, true);
+     initAll(font);
   }
 
   /**

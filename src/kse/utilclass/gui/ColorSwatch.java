@@ -26,6 +26,7 @@ Boston, MA 02111-1307, USA, or go to http://www.gnu.org/copyleft/gpl.html.
 import java.awt.Color;
 import java.awt.Component;
 import java.awt.Graphics;
+import java.io.Serializable;
 import java.util.Objects;
 
 import javax.swing.Icon;
@@ -36,7 +37,9 @@ import javax.swing.Icon;
  * This code piece is taken from the Java Tutorial.Swing.Icon 
  * (http://www.java2s.com) on Aug. 2014.
  */
-public class ColorSwatch implements Icon {
+public class ColorSwatch implements Icon, java.io.Serializable {
+	
+  private static final long serialVersionUID = 656000327512472674L;
 
   private Color ourSwatchColor = Color.white;
 

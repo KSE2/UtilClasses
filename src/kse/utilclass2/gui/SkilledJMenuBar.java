@@ -44,6 +44,7 @@ import kse.utilclass.misc.Log;
 // TODO : introduce ContainerListener and possibly change item analysis to cover all additions and removals
 
 public class SkilledJMenuBar extends JMenuBar {
+   private static final long serialVersionUID = -332344503405947231L;
    private Map<String, JMenuItem> itemMap = new HashMap<>(48);
    
    public SkilledJMenuBar() {

@@ -26,12 +26,14 @@ Boston, MA 02111-1307, USA, or go to http://www.gnu.org/copyleft/gpl.html.
 import java.util.Objects;
 
 /** Represents a pair of text strings, which can be defined or analysed from
- * another string.
+ * another string depending on a delimiter. Instances have a value based
+ * identity and a meaningful {@code toString()} result.
  */
-public class StringPair {
+public class StringPair implements Cloneable, java.io.Serializable {
+    private static final long serialVersionUID = 424618082179890115L;
 	public String s1, s2;
 	
-	StringPair (String s1, String s2) {
+	public StringPair (String s1, String s2) {
 		this.s1 = s1;
 		this.s2 = s2;
 	}
@@ -56,4 +58,46 @@ public class StringPair {
 		}
 		return pair;
 	}
+	
+	@Override
+	public Object clone() {
+		StringPair c;
+		try {
+			c = (StringPair) super.clone();
+		} catch (CloneNotSupportedException e) {
+			return null;
+		}
+		return c;
+	}
+	
+	@Override
+	public int hashCode() {
+		int hc1 = s1 == null ? 7289 : s1.hashCode();
+		int hc2 = s2 == null ? 7289 : s2.hashCode();
+		return hc1 + hc2;
+	}
+
+	@Override
+	public boolean equals (Object obj) {
+		if (obj instanceof StringPair) {
+			StringPair opa = (StringPair) obj;
+		    return Util.equal(this.s1, opa.s1) && Util.equal(this.s2, opa.s2);
+		} 
+		return false;
+	}
+
+	@Override
+	public String toString() {
+		String s1de = Util.leadStr(s1, 60);
+		if (s1de != null && s1.length() > 60) {
+			s1de += "..";
+		}
+		String s2de = Util.leadStr(s2, 60); 
+		if (s2de != null && s2.length() > 60) {
+			s2de += "..";
+		}
+		return "String-Pair: [" + s1de + "] -- [" + s2de + "]";
+	}
+	
+	
 }

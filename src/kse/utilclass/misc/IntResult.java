@@ -23,27 +23,15 @@ write to the Free Software Foundation, Inc., 59 Temple Place - Suite 330,
 Boston, MA 02111-1307, USA, or go to http://www.gnu.org/copyleft/gpl.html.
 */
 
-/* $Id: HashMac.java,v 1.5 2005/05/27 07:33:10 somebody Exp $
- *
- * Copyright (C) 1995-2000 The Cryptix Foundation Limited.
- * All rights reserved.
- *
- * Use, modification, copying and distribution of this software is subject to
- * the terms and conditions of the Cryptix General Licence. You should have
- * received a copy of the Cryptix General Licence along with this library;
- * if not, you can download a copy from http://www.cryptix.org/ .
- *
- * Modified: Wolfgang Keller, 2004 
- */
-
 /**
  *  Wrapper class for a integer value (int) which may be referenced and modified.
  *  This can be used e.g. to pass a result value from a method to the caller
  *  via the parameter list. 
  */
-public class IntResult {
+public class IntResult implements Cloneable, java.io.Serializable {
 	
-    private int i;
+    private static final long serialVersionUID = 224823270929976488L;
+    private int integer;
    
 	/**
 	 * Empty Constructor defines a zero integer value. 
@@ -54,12 +42,31 @@ public class IntResult {
 	 * Constructor which defines the argument integer value. 
 	 */
 	public IntResult ( int v ) {
-	   i = v;
+	   integer = v;
 	}
 	
-	public int getValue () {return i;}
+	public int getValue () {return integer;}
 	
 	public void setValue ( int v ) {
-	   i = v;
+	   integer = v;
 	}
+	
+	@Override
+	public int hashCode() {
+		return integer;
+	}
+
+	@Override
+	public boolean equals (Object obj) {
+		if (obj instanceof IntResult) {
+		    return integer == ((IntResult)obj).integer;
+		} 
+		return false;
+	}
+
+	@Override
+	public String toString() {
+		return Integer.toString(integer);
+	}
+	
 }

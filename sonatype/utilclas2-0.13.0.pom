@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <groupId>io.github.kse2</groupId>
+  <artifactId>utilclas2</artifactId>
+  <version>0.13.0</version>
+  <packaging>jar</packaging>
+
+  <name>UtilClasses-2</name>
+  <description>Java utility classes to support algorithms (development), extension</description>
+  <url>https://github.com/kse2/utilclasses</url>
+
+  <licenses>
+    <license>
+      <name>GNU LGPL 3.0</name>
+      <url>https://www.gnu.org/licenses/lgpl-3.0.html</url>
+    </license>
+  </licenses>
+
+  <dependencies>
+    <dependency>
+      <groupId>io.github.kse2</groupId>
+      <artifactId>utilclas1</artifactId>
+      <version>0.13.0</version>
+    </dependency>
+  </dependencies>
+
+  <scm>
+    <connection>scm:git:https://github.com/kse2/utilclasses.git</connection>
+    <developerConnection>scm:git:ssh://git@github.com:kse2/utilclasses.git</developerConnection>
+    <url>https://github.com/kse2/utilclasses</url>
+  </scm>
+
+  <developers>
+    <developer>
+      <name>Wolfgang Keller</name>
+      <email>neolith@uber.space</email>
+    </developer>
+  </developers>
+</project>
+

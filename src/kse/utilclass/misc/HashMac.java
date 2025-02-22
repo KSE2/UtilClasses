@@ -239,7 +239,7 @@ public abstract class HashMac
      * stored first).
      * 
      * @param input a char array
-     * @param offset start offset in <code>input</coe>
+     * @param offset start offset in <code>input</code>
      * @param length number of chars to be used for this update
      */
     public void update( char[] input, int offset, int length )

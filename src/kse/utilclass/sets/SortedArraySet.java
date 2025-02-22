@@ -1,5 +1,7 @@
 package kse.utilclass.sets;
 
+import java.io.Serializable;
+
 /*
 *  File: SortedArraySet.java
 * 
@@ -34,16 +36,16 @@ import java.util.Set;
 import java.util.SortedSet;
 
 /**
- * SortedArraySet is an extension of {@code ArraySet} implementing the
+ * {@code SortedArraySet} is an extension of {@code ArraySet} implementing the
  * {@code SortedSet} interface.
  * All elements inserted into this set must implement the {@code Comparable} 
- * interface or be accepted by the specified comparator.
+ * interface or be accepted by a specified comparator.
  * A sorted set has advantage when a single set is used iteratively with
- * dominating membership requests or set operations ({@code OperatingSet}), for
- * their execution time.
+ * dominating membership requests or set operations ({@code OperatingSet}),
+ * for their execution time.
  * 
- * <p>Methods of the {@code SortedSet} interface which render views of a set as
- * subsets are currently not supported.
+ * <p>If instances have to be serialised, any comparator supplied needs to
+ * implement the {@code java.io.Serializable} interface.
  * 
  * <p><b>Complexities (of the implementation of this class):</b>
  * <br>Single item: insertion, removal and iteration cost O(n), membership 
@@ -55,20 +57,54 @@ import java.util.SortedSet;
 
 public class SortedArraySet<E> extends ArraySet<E>  implements SortedSet<E> {
 	
+    private static final long serialVersionUID = -30952581123900119L;
+	
 	private Comparator<? super E> comparator;
 
+	/** Creates an empty sorted-set with natural sorting of its elements.
+	 */
 	public SortedArraySet () {
 	}
 
+	/** Creates an empty sorted-set with natural sorting of its elements and
+	 * the given initial capacity.
+	 * 
+	 * @param initialCapacity int
+	 */
 	public SortedArraySet (int initialCapacity) {
 		super(initialCapacity);
 	}
 
+	/** Creates a new sorted-set with the given collection as initial content.
+	 * The collection is not required to be sorted and may contain duplicate
+	 * entries. Duplicate entries in the course of the collection's iterator
+	 * are excluded.
+	 * 
+	 * @param c {@code Collection<? extends E>}, may be null
+	 */
 	public SortedArraySet (Collection<? extends E> c) {
 		super(c);
 	}
 
+    /**
+     * Constructs a set containing the elements of the specified array, 
+     * excluding duplicates in the series of its growing index.
+     * The size of the set hence may be smaller than the size of the argument.
+     *
+     * @param c {@code Collection} initial content of this set; may be null
+     */
+    public SortedArraySet (E[] c) {
+    	super(c);
+    }
+
+	/** Creates a new sorted-set with the given {@code SortedSet} as initial
+	 * content and the argument's comparator as sorting.
+	 * 
+	 * @param c {@code SortedSet<? extends E>}, may be null
+	 */
 	public SortedArraySet (SortedSet<E> c) {
+		if (c == null) return;
+		
 		// transfer data
 		if (c instanceof SortedArraySet) {
 			// make a copy of the argument element array (same class)
@@ -88,10 +124,20 @@ public class SortedArraySet<E> extends ArraySet<E>  implements SortedSet<E> {
 		comparator = c.comparator();
 	}
 
+	/** Creates an empty sorted-set with the given element comparator.
+	 * 
+	 * @param comparator {@code Comparator<? super E>}, may be null
+	 */
 	public SortedArraySet (Comparator<? super E> comparator) {
 		setComparator(comparator);
 	}
 
+	/** Creates an empty sorted-set with the given element comparator and
+	 * the given initial capacity.
+	 * 
+	 * @param comparator {@code Comparator<? super E>}, may be null
+	 * @param initialCapacity int
+	 */
 	public SortedArraySet (Comparator<? super E> comparator, int initialCapacity) {
 		super(initialCapacity);
 		setComparator(comparator);
@@ -99,69 +145,105 @@ public class SortedArraySet<E> extends ArraySet<E>  implements SortedSet<E> {
 
 	/** Sets the {@code Comparator} defining the total order on the elements
 	 * of this set. A value of null sets usage of the natural ordering of
-	 * the elements. If the set contains elements, it is resorted by this 
-	 * method.
+	 * the elements. If the set contains elements, it is implicitly resorted 
+	 * by a call of this method.
+	 * <p>NOTE: If this instance of {@code SortedArraySet} shall be serialised,
+	 * the given comparator has to implement the {@code java.io.Serializable}
+	 * interface and supply a unique {@code long serialVersionUID}.
 	 *  
 	 * @param comparator {@code Comparator}, null for "natural ordering"
 	 */
-	@SuppressWarnings("unchecked")
 	public void setComparator (Comparator<? super E> comparator) {
 		this.comparator = comparator;
-		
+		resort();
+	}
+
+	@SuppressWarnings("unchecked")
+	protected void resort () {
 		// resort to new comparator
 		if (comparator != null && size > 0) {
 			Arrays.sort((E[])elementData, 0, size, comparator);
+			modCount++;
 		}
 	}
-
+	
 	@Override
 	public Comparator<? super E> comparator() {
 		return comparator;
 	}
 	
-//    @SuppressWarnings("unchecked")
-//    @Override
-//	public SortedArraySet<E> clone () {
-//   	   return (SortedArraySet<E>) super.clone();
-//	}
-//
-//    protected SortedArraySet<E> emptyClone () {
-//   	   return (SortedArraySet<E>) super.clone();
-// 	}
-    
 	/** Returns the index position (>= 0) of the given object in the element 
 	 * array. Returns a negative value (-insertPosition -1) if the object is not
 	 * present in the array. This indicates the insert position.
+	 * <p>NOTE: Arguments which are not of the class'es argument type are always
+	 * prompted with -1.
 	 *    
-	 * @param e E search object 
+	 * @param e Object search object 
 	 * @return int index or insert position
 	 * @throws IllegalArgumentException if e is not Comparable and comparator is
 	 *         null
 	 * @throws NullPointerException if argument is null
 	 */
 	@SuppressWarnings("unchecked")
-	private int objectPosition (E e) {
-		Objects.requireNonNull(e);
+	private int objectPosition (Object o) {
+		Objects.requireNonNull(o);
 		int pos;
-		
-		// binary search for insert position of e
-		if (comparator != null) {
-			pos = Arrays.binarySearch((E[]) elementData, 0, size, e, comparator);
-		} else {
-			if (!(e instanceof Comparable)) {
-				throw new IllegalArgumentException("argument is not comparable");
+
+		try {
+			// binary search for insert position of e
+			if (comparator != null) {
+				pos = Arrays.binarySearch((E[]) elementData, 0, size, (E)o, comparator);
+			} else {
+				if (!(o instanceof Comparable)) {
+					throw new IllegalArgumentException("argument is not comparable");
+				}
+				pos = Arrays.binarySearch(elementData, 0, size, o);
 			}
-			pos = Arrays.binarySearch(elementData, 0, size, e);
+			return pos;
+			
+		} catch (ClassCastException ex) {
+			return -1;
 		}
-		return pos;
 	}
 
-	
+    @Override
+    public int indexOf (Object o) {
+   	    int pos = objectPosition(o);
+    	return pos >= 0 ? pos : -1;
+    }
+
 	@Override
-	public boolean contains (Object o) {
-		@SuppressWarnings("unchecked")
-		E e = (E) o;
-		return objectPosition(e) > -1;  
+    public boolean contains (Object o) {
+		return objectPosition(o) > -1;
+	}
+	
+	/** Compares the specified object with this set for equality. Returns true
+	 * if and only if the specified object is also a {@code SortedSet} both 
+	 * sets have the same size, and all corresponding pairs of elements in the
+	 * two sets are equal. (Two elements e1 and e2 are equal if 
+	 * (e1==null ? e2==null : e1.equals(e2)).) In other words, two sorted-sets
+	 * are defined to be equal if they contain the same elements in the same 
+	 * order.
+	 */
+	@SuppressWarnings("unchecked")
+	@Override
+	public boolean equals (Object o) {
+		if (o == this) return true;
+		if (!(o instanceof SortedSet)) return false;
+		int ourSize = size();
+		try {
+			Collection<E> col = (Collection<E>) o;
+			if (col.size() != ourSize) return false;
+			
+			Iterator<E> it1 = iterator();
+			Iterator<E> it2 = col.iterator();
+			for (int i = 0; i < ourSize; i++) {
+				if (!it1.next().equals(it2.next())) return false;
+			}
+		} catch (ClassCastException e) {
+			return false;
+		}
+		return true;
 	}
 
 	@Override
@@ -183,30 +265,15 @@ public class SortedArraySet<E> extends ArraySet<E>  implements SortedSet<E> {
 
 	@Override
 	public boolean remove (Object o) {
-		@SuppressWarnings("unchecked")
-		int pos = objectPosition((E) o);
+		int pos = objectPosition(o);
 		if (pos < 0) return false;
 
 		System.arraycopy(elementData, pos+1, elementData, pos, --size-pos);
 	    elementData[size] = null;
+	    modCount++;
 	    return true;
 	}
 
-//	/** Returns the index value of the given element object in this set's
-//	 * data array, or -1 of unavailable.
-//	 * 
-//	 * @param e E
-//	 * @return index >= 0 or -1 for not found 
-//	 */
-//	private int indexOf (E e) {
-//		int pos = objectPosition(e); 
-//		return pos < 0 ? -1 : pos;
-//	}
-//	
-//	private SortedSet<E> subset (int fromIndex, int toIndex) {
-//		return null;
-//	}
-	
 	@Override
 	public SortedSet<E> subSet (E fromElement, E toElement) {
 		Objects.requireNonNull(toElement, "toElement is null");
@@ -246,36 +313,13 @@ public class SortedArraySet<E> extends ArraySet<E>  implements SortedSet<E> {
 	 * @throws IndexOutOfBoundsException
 	 */
 	public E getElement (int index) {
-		if (index < 0 | index >= size()) 
-			throw new IndexOutOfBoundsException();
-		
-		Iterator<E> it = iterator();
-		E e = null;
-		for (int i = 0; i <= index; i++) {
-			e = it.next();
-		}
-		return e;
-	}
-	
-	/** Returns the index position of the given element object in this SortedSet
-	 * or -1 if this object is not contained.
-	 *  
-	 * @param o Object
-	 * @return int index position or -1
-	 */
-	public int indexOf (Object o) {
-		int ct = 0;
-		for (Iterator<E> it = iterator(); it.hasNext(); ct++) {
-			if (it.next().equals(o)) {
-				return ct;
-			}
-		}
-		return -1;
+		return get(index);
 	}
 	
 // ----------------------------------------------------------
 	
-	private class SubSortedSet extends AbstractSet<E> implements OperatingSet<E>, SortedSet<E> {
+	private class SubSortedSet extends AbstractSet<E> implements OperatingSet<E>, SortedSet<E>, Serializable {
+	    private static final long serialVersionUID = -30932555128001208L;
 		private SortedSet<E> parentSet;
 		private E lowBound, highBound;
 
@@ -291,9 +335,10 @@ public class SortedArraySet<E> extends ArraySet<E>  implements SortedSet<E> {
 			// if both bound values are defined, check for consistency
 			if (lowBound != null && highBound != null) {
 				// compare low and high bound
-				Comparator<? super E> comparator = comparator();
-				int c = comparator == null ? ((Comparable<E>)highBound).compareTo(lowBound)
-						: comparator.compare(highBound, lowBound);
+				Comparator<? super E> comp = comparator();
+				@SuppressWarnings("unchecked")
+				int c = comp == null ? ((Comparable<E>)highBound).compareTo(lowBound)
+						: comp.compare(highBound, lowBound);
 				
 				// control consistency of bounds parameters
 				if (c < 0) {
@@ -309,25 +354,27 @@ public class SortedArraySet<E> extends ArraySet<E>  implements SortedSet<E> {
 		 * @param v E
 		 * @return boolean true = in range, false = out of range 
 		 */
+		@SuppressWarnings("unchecked")
 		private boolean isInbounds (E v) {
-			Comparator<? super E> comparator = comparator();
+			Comparator<? super E> comp = comparator();
 			
 			// verify lower bound compliance if defined
 			if (lowBound != null) {
-				int c = comparator == null ? ((Comparable<E>)v).compareTo(lowBound)
-						: comparator.compare(v, lowBound);
+				int c = comp == null ? ((Comparable<E>)v).compareTo(lowBound)
+						: comp.compare(v, lowBound);
 				if (c < 0) return false;
 			}
 
 			// verify lower bound compliance if defined
 			if (highBound != null) {
-				int c = comparator == null ? ((Comparable<E>)v).compareTo(highBound)
-						: comparator.compare(v, highBound);
+				int c = comp == null ? ((Comparable<E>)v).compareTo(highBound)
+						: comp.compare(v, highBound);
 				if (c >= 0) return false;
 			}
 			return true;
 		}
 		
+		@SuppressWarnings("unchecked")
 		@Override
 		public boolean contains (Object o) {
 			return isInbounds((E) o) && parentSet.contains(o);
@@ -343,6 +390,7 @@ public class SortedArraySet<E> extends ArraySet<E>  implements SortedSet<E> {
 			return ok;
 		}
 
+		@SuppressWarnings("unchecked")
 		@Override
 		public boolean remove (Object o) {
 			Objects.requireNonNull(o);

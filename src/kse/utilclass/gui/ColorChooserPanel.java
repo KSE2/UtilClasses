@@ -53,8 +53,8 @@ public class ColorChooserPanel extends JPanel {
 		UnixColor.ForestGreen, Color.lightGray, Color.gray, Color.darkGray
 	};
 	
-	private ArraySet<ActionListener> listenerSet = new ArraySet<>();
-	ActionListener alistener;
+	private transient ArraySet<ActionListener> listenerSet = new ArraySet<>();
+	transient ActionListener alistener;
 	private Dimension swatDim;
 	private Color[] colors;
 	private Color selection;

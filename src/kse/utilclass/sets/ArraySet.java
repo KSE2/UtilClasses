@@ -30,6 +30,7 @@ import java.util.ConcurrentModificationException;
 import java.util.Iterator;
 import java.util.NoSuchElementException;
 import java.util.Set;
+import java.util.SortedSet;
 
 /** ArraySet is a {@code java.util.AbstractSet} which implements the 
  * package own {@code OperatingSet} interface for convenient set operations. 
@@ -51,12 +52,12 @@ import java.util.Set;
 public class ArraySet<E> extends AbstractSet<E> implements OperatingSet<E>, 
 			java.io.Serializable, Cloneable 
 {
-//    private static final long serialVersionUID = 8683002281122867889L;
+    private static final long serialVersionUID = 8993772220011867823L;
 
     /**
      * Default initial capacity.
      */
-    public static final int DEFAULT_CAPACITY = 10;
+    public static final int DEFAULT_CAPACITY = 16;
 
     /**
      * Shared empty array instance used for empty instances.
@@ -77,7 +78,7 @@ public class ArraySet<E> extends AbstractSet<E> implements OperatingSet<E>,
      * empty ArrayList with elementData == DEFAULTCAPACITY_EMPTY_ELEMENTDATA
      * will be expanded to DEFAULT_CAPACITY when the first element is added.
      */
-    protected transient Object[] elementData; 
+    protected Object[] elementData = EMPTY_ELEMENTDATA; 
 
     /**
      * The size of the ArrayList (the number of elements it contains).
@@ -99,29 +100,42 @@ public class ArraySet<E> extends AbstractSet<E> implements OperatingSet<E>,
         if (initialCapacity < 0)
             throw new IllegalArgumentException("initialCapacity < 0");
 
-        this.elementData = EMPTY_ELEMENTDATA;
         ensureCapacity(initialCapacity);
     }
 
     /**
-     * Constructs an empty set for an initial default capacity.
+     * Constructs an empty set.
      */
     public ArraySet () {
-        this.elementData = EMPTY_ELEMENTDATA;
     }
 
     /**
-     * Constructs a set containing the elements of the specified
-     * collection, excluding duplicates. The size of the set hence may
-     * be smaller than the size of the argument collection.
+     * Constructs a set containing the elements of the specified collection, 
+     * excluding duplicates in the series of its iterator.
+     * The size of the set hence may be smaller than the size of the argument
+     * collection.
      *
-     * @param c {@code Collection} whose elements are placed into this set;
-     *           may be null for empty set
+     * @param c {@code Collection} initial content of this set; may be null
      */
     public ArraySet (Collection<? extends E> c) {
-        elementData = EMPTY_ELEMENTDATA;
-        if (c != null) {
+    	if (c != null) {
+	    	ensureCapacity(c.size());
         	addAll(c);
+    	}
+    }
+
+    /**
+     * Constructs a set containing the elements of the specified collection, 
+     * excluding duplicates in the series of its growing index.
+     * The size of the set hence may be smaller than the size of the argument
+     * array.
+     *
+     * @param a {@code E[]} initial content of this set; may be null
+     */
+    public ArraySet (E[] a) {
+        if (a != null) {
+        	ensureCapacity(a.length);
+    		for (E e : a) add(e);
         }
     }
 
@@ -135,12 +149,16 @@ public class ArraySet<E> extends AbstractSet<E> implements OperatingSet<E>,
     public static <T> ArraySet<T> fromArray (T[] arr) {
     	ArraySet<T> set = new ArraySet<>();
     	if (arr != null) {
+    		set.ensureCapacity(arr.length);
     		for (T e : arr) set.add(e);
     	}
     	return set;
     }
     
-    /** length of the current element array */
+    /** Length of the current element array. 
+     * 
+     * @return int
+     */
     int getCurrentCapacity () {
     	return elementData.length;
     }
@@ -163,7 +181,7 @@ public class ArraySet<E> extends AbstractSet<E> implements OperatingSet<E>,
     public void taylorCapacity () {
        // shrink capacity
        int capacity = size + size/4; 
-       if (size <= capacity && capacity < elementData.length) {
+       if (capacity < elementData.length) {
           elementData = Arrays.copyOf(elementData, capacity);
        }
     }
@@ -184,13 +202,16 @@ public class ArraySet<E> extends AbstractSet<E> implements OperatingSet<E>,
         
         // overflow-conscious code
         int oldCapacity = elementData.length;
-        int newCapacity = oldCapacity + Math.max(DEFAULT_CAPACITY, (oldCapacity >> 1));
-        if (newCapacity < 0 || newCapacity > MAX_ARRAY_SIZE) {
+        int quarter = oldCapacity/4;
+        int factor = oldCapacity < 1000 ? 4 : oldCapacity < 12000 ? 3 : 1;
+        int newCapacity = oldCapacity + Math.max(DEFAULT_CAPACITY, quarter * factor);
+        if (newCapacity < 0 | newCapacity > MAX_ARRAY_SIZE) {
         	newCapacity = MAX_ARRAY_SIZE;
         }
+
         newCapacity = Math.max(minCapacity, newCapacity);
-        
         elementData = Arrays.copyOf(elementData, newCapacity);
+//        System.out.println("-- (ArraySet) growing capacity to  " + newCapacity);
     }
 
    @Override
@@ -206,9 +227,7 @@ public class ArraySet<E> extends AbstractSet<E> implements OperatingSet<E>,
    @Override
    public boolean add (E e) {
 	  // ignore double element
-      if ( contains(e) ) {
-         return false;
-      }
+      if (contains(e)) return false;
       
       // add new element
       ensureCapacity(size + 1);
@@ -217,24 +236,80 @@ public class ArraySet<E> extends AbstractSet<E> implements OperatingSet<E>,
       return true;
    }
 
-   @Override
-   public boolean contains (Object o) {
+   /** Returns the index position of the given element in this array-set or
+    * -1 if it is not contained.
+    * 
+    * @param o E 
+    * @return index position or -1
+    */
+   public int indexOf (Object o) {
 	   if (o == null) {
 		   for (int i = 0; i < size; i++) {
 			   if (elementData[i] == null) {
-				   return true;
+				   return i;
 			   }
 		   }
 	   } else {
 		   for (int i = 0; i < size; i++) {
 			   if (o.equals(elementData[i])) {
-				   return true;
+				   return i;
 			   }
 		   }
 	   }
-	   return false;
+	   return -1;
+   }
+   
+	@Override
+	public int hashCode() {
+		int hash = 98982, ct = 1;
+		boolean isSorted = this instanceof SortedSet;
+		for (int i = 0; i < size; i++) {
+		    Object obj = elementData[i];
+		    hash += (obj == null ? 8567 : obj.hashCode()) * (isSorted ? ct++ : 1);
+	    }
+		return hash;
+	}
+
+   /** Returns the element at the given index position.
+    *  
+    * @param index int index of element
+    * @return E element
+    * @throws IndexOutOfBoundsException
+    */
+   @SuppressWarnings("unchecked")
+   public E get (int index) {
+	   if (index < 0 | index >= size)
+		   throw new IndexOutOfBoundsException("index out of range: " + index);
+	   return (E) elementData[index];
+   }
+   
+   @Override
+   public boolean contains (Object o) {
+	   return indexOf(o) > -1;
    }
 
+   @Override
+   public Object[] toArray() {
+	   Object[] res = new Object[size()];
+	   System.arraycopy(elementData, 0, res, 0, size);
+	   return res;
+   }
+   
+   @Override
+   @SuppressWarnings("unchecked")
+   public <T> T[] toArray(T[] a) {
+       // create typed array of cardinality
+       T[] res = a.length >= size ? a : (T[])java.lang.reflect.Array
+                 .newInstance(a.getClass().getComponentType(), size);
+       
+       // move data block
+	   System.arraycopy(elementData, 0, res, 0, size);
+       if (a.length > size) {
+           a[size] = null;
+       }
+	   return res;
+   }
+   
    @Override
    public void clear() {
 	  if (size > 0) {
@@ -264,7 +339,7 @@ public class ArraySet<E> extends AbstractSet<E> implements OperatingSet<E>,
       try {
     	@SuppressWarnings("unchecked")
 		ArraySet<E> copy = (ArraySet<E>)super.clone();
-         copy.elementData = EMPTY_ELEMENTDATA;
+         copy.elementData = new Object[2*DEFAULT_CAPACITY];
          copy.size = 0;
          copy.modCount = 0;
          return copy;
@@ -350,11 +425,13 @@ public class ArraySet<E> extends AbstractSet<E> implements OperatingSet<E>,
 
         ASIterator() {}
 
-        public boolean hasNext() {
+        @Override
+		public boolean hasNext() {
             return cursor != size;
         }
 
-        @SuppressWarnings("unchecked")
+        @Override
+		@SuppressWarnings("unchecked")
         public E next() {
             checkForComodification();
             int i = cursor;
@@ -367,7 +444,8 @@ public class ArraySet<E> extends AbstractSet<E> implements OperatingSet<E>,
             return (E) data[lastRet = i];
         }
 
-        public void remove() {
+        @Override
+		public void remove() {
             if (lastRet < 0)
                 throw new IllegalStateException();
             checkForComodification();
@@ -377,7 +455,6 @@ public class ArraySet<E> extends AbstractSet<E> implements OperatingSet<E>,
             	int i = lastRet;
             	System.arraycopy(elementData, i+1, elementData, i, --size-i);
             	elementData[size] = null;
-                
                 cursor = lastRet;
                 lastRet = -1;
                 

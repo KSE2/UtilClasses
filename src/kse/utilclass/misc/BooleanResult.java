@@ -28,9 +28,10 @@ Boston, MA 02111-1307, USA, or go to http://www.gnu.org/copyleft/gpl.html.
  *  This can be used e.g. to pass a result value from a method to the caller
  *  via the parameter list. 
  */
-public class BooleanResult {
+public class BooleanResult implements Cloneable, java.io.Serializable {
 	
-    private boolean b;
+    private static final long serialVersionUID = 540259660312379086L;
+    private boolean bool;
    
 	/**
 	 * Empty Constructor defines a <b>false</b> boolean value. 
@@ -38,17 +39,37 @@ public class BooleanResult {
 	public BooleanResult () {}
 	
 	/**
-	 * Constructor which defines the argument boolean value. 
+	 * Constructor which defines the argument boolean value.
+	 *  
+	 * @param v boolean
 	 */
 	public BooleanResult ( boolean v ) {
-	   b = v;
+	   bool = v;
 	}
 	
-	public boolean isTrue () {return b;}
+	public boolean isTrue () {return bool;}
 	
-	public boolean isFalse () {return !b;}
+	public boolean isFalse () {return !bool;}
 	
 	public void setValue ( boolean v ) {
-	   b = v;
+	   bool = v;
+	}
+
+	@Override
+	public int hashCode() {
+		return bool ? 12318192 : 123711646;
+	}
+
+	@Override
+	public boolean equals (Object obj) {
+		if (obj instanceof BooleanResult) {
+		    return bool == ((BooleanResult)obj).bool;
+		} 
+		return false;
+	}
+
+	@Override
+	public String toString() {
+		return bool ? "true" : "false";
 	}
 }

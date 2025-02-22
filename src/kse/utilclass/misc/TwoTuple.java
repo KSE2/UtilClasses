@@ -23,7 +23,8 @@ write to the Free Software Foundation, Inc., 59 Temple Place - Suite 330,
 Boston, MA 02111-1307, USA, or go to http://www.gnu.org/copyleft/gpl.html.
 */
 
-public class TwoTuple implements Cloneable {
+public class TwoTuple implements Cloneable, java.io.Serializable {
+    private static final long serialVersionUID = -45457748407860534L;
 	public long v1, v2; 
 	
 	public TwoTuple (long v1, long v2) {
@@ -31,10 +32,10 @@ public class TwoTuple implements Cloneable {
 		this.v2 = v2;
 	}
 
-	public TwoTuple (int v1, int v2) {
-		this.v1 = v1;
-		this.v2 = v2;
-	}
+//	public TwoTuple (int v1, int v2) {
+//		this.v1 = v1;
+//		this.v2 = v2;
+//	}
 
 	@Override
 	public Object clone() {

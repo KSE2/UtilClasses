@@ -52,15 +52,15 @@ public class StatusBar extends JPanel {
    
    /** Internal marker for operating the SwingUtilities block. */
    private enum OperationType { message, counter, dataformat, activity, font }; 
-
+   private transient Timer           statusTimer;
+   private transient TimerTask       statusTextRemover;
+   private int			   activityCounter;
+   
    private JPanel          rightPanel;
    private JLabel          textField = new JLabel();
    private JLabel          activeLabel = new JLabel();
    private JLabel          formatLabel = new JLabel();
    private JLabel          counterLabel = new JLabel();
-   private Timer           statusTimer;
-   private TimerTask       statusTextRemover;
-   private int			   activityCounter;
 
    
    public StatusBar () {

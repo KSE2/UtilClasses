@@ -35,6 +35,8 @@ import javax.swing.JPanel;
 import javax.swing.ListCellRenderer;
 import javax.swing.ListSelectionModel;
 
+import kse.utilclass2.gui.LayeredList.ListElement;
+
 /**
  * A subclass of <code>LayeredList</code> to organise a list of check-box
  * selectable list items in a tree-enabled, layered list.
@@ -55,9 +57,11 @@ import javax.swing.ListSelectionModel;
  */
 
 public class LayeredOptionList extends LayeredList {
+	
+   private static final long serialVersionUID = -599034361157845989L;
 
-   private ListCellRenderer customCellRenderer = super.getCustomCellRenderer();
-   private ListCellRenderer defaultRenderer = customCellRenderer;
+   private transient ListCellRenderer customCellRenderer = super.getCustomCellRenderer();
+   private transient ListCellRenderer defaultRenderer = customCellRenderer;
    private boolean checkboxFolders;
    private boolean preciseHit;
    

@@ -50,7 +50,8 @@ import kse.utilclass.misc.Log;
  * AUSTRIA. 
  * 
  */
-public class CommandlineHandler {
+public class CommandlineHandler implements java.io.Serializable {
+   private static final long serialVersionUID = 489011337858756818L;
 	
    /** Signal that option code starts with */
    public static final String DEFAULT_OPTION_SIGNAL = "-";

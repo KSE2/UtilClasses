@@ -60,6 +60,7 @@ import java.text.DecimalFormatSymbols;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.BitSet;
+import java.util.Collection;
 import java.util.Comparator;
 import java.util.Date;
 import java.util.Enumeration;
@@ -69,7 +70,6 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Properties;
 import java.util.Random;
-import java.util.Set;
 import java.util.TimeZone;
 import java.util.concurrent.TimeUnit;
 import java.util.zip.CRC32;
@@ -116,14 +116,15 @@ public class Util {
         isWindows = System.getProperty("os.name","").toLowerCase().indexOf("windows") > -1;
 	}
 	
-	/** Whether the given set is sorted in ascending order via its iterator and
-	 * the given comparator. An empty set is regarded sorted.
+	/** Whether the given collection of elements is sorted in ascending order
+	 * via its iterator and the given comparator or its natural sorting. 
+	 * An empty collection is regarded sorted.
 	 *  
-	 * @param set {@code Set<T>}
+	 * @param set {@code Collection<T>}
 	 * @param comp {@code Comparator<? super T>}, null for "natural" ordering
 	 * @return boolean true = sorted ascending, false = else
 	 */
-	public static <T> boolean isSortedSet (Set<T> set, Comparator<? super T> comp) {
+	public static <T> boolean isSortedSet (Collection<T> set, Comparator<? super T> comp) {
 		T t = null;
 		for (T o : set) {
 			if (t != null) {
@@ -2866,6 +2867,21 @@ public class Util {
 	 */
 	public static boolean nextBoolean() {
 		return random.nextBoolean();
+	}
+
+	/** Returns the leading string of the given string up to the given
+	 * maximum length.
+	 * 
+	 * @param s String input value
+	 * @param max int maximum length of result
+	 * @return String leading substring of s or null if s is null
+	 */
+	public static String leadStr (String s, int max) {
+		String res = null;
+		if (s != null) {
+			res = s.length() <= max ? s : s.substring(0, max);
+		}
+		return res;
 	}
 	
 }

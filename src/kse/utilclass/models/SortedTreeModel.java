@@ -39,13 +39,27 @@ import javax.swing.tree.TreePath;
 
 import kse.utilclass.sets.SortedArraySet;
 
-public class SortedTreeModel implements TreeModel {
+/**
+ * A {@code TreeModel} which sorts the elements of its nodes along the natural
+ * sorting of the supplied user objects. User objects are compared with their
+ * {@code toString()} results. If instances of this model shall be
+ * serialised, user objects have to comply to the {@code java.io.Serializable}
+ * interface.
+ * 
+ * <p>The {@code SortedTreeModel} does not serialise its listeners 
+ * (TreeModelListener).
+ * 
+ */
+public class SortedTreeModel implements TreeModel, java.io.Serializable {
+	
+    private static final long serialVersionUID = -517560356477421857L;
 
-	LinkedList<TreeModelListener> listeners = new LinkedList<>();
+	transient LinkedList<TreeModelListener> listeners = new LinkedList<>();
 	Hashtable<TreePath, TNode> hmap = new Hashtable<>(16);
 	TNode root;
 	
 	public static class TNode extends SortedArraySet<TNode> implements Comparable<TNode> {
+	    private static final long serialVersionUID = -547907442991784191L;
 		private TNode parent;
 		private Object object;
 		

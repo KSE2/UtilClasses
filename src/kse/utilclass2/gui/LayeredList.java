@@ -77,13 +77,16 @@ import kse.utilclass.gui.ColorSwatch;
  *  code must be customised (which should not cause a big effort).
  */
 public class LayeredList extends JList<LayeredList.ListElement> {
+	
+   private static final long serialVersionUID = -344987234073999273L;
+
    protected static boolean debug;
    private static final int SWATCH_SIZE = 8;
    public final static Icon FOLDED_SWATCH = new ColorSwatch(SWATCH_SIZE, Color.yellow);
    public final static Icon UNFOLDED_SWATCH = new ColorSwatch(SWATCH_SIZE, Color.white);
    
    private SortedMap<String, ListElement> allMap; 
-   private ListCellRenderer<? super ListElement> customCellRenderer = super.getCellRenderer();
+   private transient ListCellRenderer<? super ListElement> customCellRenderer = super.getCellRenderer();
    private Model model;
    private Icon foldedIcon = FOLDED_SWATCH;  // folded folder icon
    private Icon unfoldedIcon = UNFOLDED_SWATCH;  // unfolded folder icon
@@ -512,7 +515,8 @@ public void setPrintHierarchy (boolean printHierarchy) {
  * By default, new list elements are VISIBLE, not SHOWING and not FOLDING
  * their children.
  */
-public static class ListElement implements Comparable<ListElement> {
+public static class ListElement implements Comparable<ListElement>, java.io.Serializable {
+   private static final long serialVersionUID = 252809958187976100L;
    
    private LayeredList list;
    private ListElement parent;
@@ -950,6 +954,7 @@ public static class ListElement implements Comparable<ListElement> {
 }
 
 protected static class Model extends AbstractListModel<ListElement> implements ListSelectionListener {
+   private static final long serialVersionUID = 440671939991631651L;
    private List<ListElement> tsa = new ArrayList<ListElement>(); 
 
    /** Removes all list entries from this model. 
